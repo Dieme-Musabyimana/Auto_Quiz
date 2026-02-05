@@ -1,0 +1,21 @@
+# Browser Profiles & Sessions
+bot_profile/
+state.json
+.auth/
+
+# Build & IDE
+target/
+.idea/
+*.iml
+.vscode/
+
+# Logs & Data
+*.log
+*.png
+statistics.json
+masterDatabase.json
+quiz_results.txt
+
+# OS Junk
+Thumbs.db
+.DS_Store
