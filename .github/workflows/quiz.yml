@@ -55,6 +55,10 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch:
 
+# 🔐 ADD THIS: Allows the bot to push statistics.json back to your repo
+permissions:
+  contents: write
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
@@ -69,7 +73,6 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers & System Deps
-        # We use 'install-deps' separately with sudo to ensure the Linux OS is ready
         run: |
           mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
           sudo mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install-deps chromium"
@@ -80,12 +83,24 @@ jobs:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+          # Ensure your Groq key is here too if you're using AI!
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }} 
         run: mvn test -Dtest=DoQuizTest
+        # Continue even if test fails so we can save the screenshot
+        continue-on-error: true 
+
+      - name: Upload Error Screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-debug-files
+          path: error_view.png
+          if-no-files-found: ignore
 
       - name: Commit and Push Progress
         run: |
-          git config --global user.name "QuizBot"
-          git config --global user.email "bot@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           if [ -f "statistics.json" ]; then 
             git add statistics.json
           fi
@@ -95,5 +110,4 @@ jobs:
             git commit -m "🤖 Update learned answers [skip ci]"
             git push
           fi
-          
  
