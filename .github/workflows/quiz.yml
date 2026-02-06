@@ -18,16 +18,16 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers
-        working-directory: ./Auto_Quiz        # <--- Pointing to the single folder
+        # Removed the extra sub-folder path
         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
 
       - name: Run Bot
-        working-directory: ./Auto_Quiz        # <--- Pointing to the single folder
         env:
           QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+        # Removed the extra sub-folder path
         run: mvn test -Dtest=DoQuizTest
 
       - name: Commit and Push Progress
@@ -35,15 +35,13 @@ jobs:
           git config --global user.name "QuizBot"
           git config --global user.email "bot@github.com"
           
-          # Adding from the correct relative path
-          if [ -f "Auto_Quiz/statistics.json" ]; then 
+          # Check for the file in the root first
+          if [ -f "statistics.json" ]; then 
+            git add statistics.json
+          elif [ -f "Auto_Quiz/statistics.json" ]; then
             git add Auto_Quiz/statistics.json
           fi
           
-          if [ -d "Auto_Quiz/bot_profile" ]; then
-            git add Auto_Quiz/bot_profile/
-          fi
-
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
