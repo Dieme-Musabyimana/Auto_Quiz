@@ -1,165 +1,238 @@
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
-import page.GroqService;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
-import java.io.*;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-import com.microsoft.playwright.options.WaitForSelectorState;
+import java.util.Arrays;
 
-public class DoQuizTest {
-    private static String lastProcessedQuestion = "";
-    private static Map<String, String> masterDatabase = new HashMap<>();
-    private static final String DATA_FILE = "statistics.json";
-    private static int totalMarksGained = 0;
-    private static final Random random = new Random();
-    private static final int MAX_RETRIES = 2;
-    private static final int QUESTION_TIMEOUT_MS = 15000; // Increased for GitHub lag
+public class DoQuizGithubCI {
 
-  private static void hardRestart(Page page) {
-    lastProcessedQuestion = "";
-    System.out.println("🔁 Restarting quiz and navigating to index...");
-    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
-        new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+  @Test
+  public void runQuizOnGithub() {
+    try (Playwright playwright = Playwright.create()) {
+
+      Browser browser = playwright.chromium().launch(
+        new BrowserType.LaunchOptions()
+          .setHeadless(true)
+          .setArgs(Arrays.asList("--no-sandbox","--disable-dev-shm-usage"))
+      );
+
+      BrowserContext context = browser.newContext(
+        new Browser.NewContextOptions().setViewportSize(1920,1080)
+      );
+
+      Page page = context.newPage();
+
+      // 1️⃣ Navigate
+      page.navigate(
+        "https://www.iwacusoft.com/ubumenyibwanjye/index",
+        new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+      );
+
+      // 2️⃣ Login if needed
+      Locator phone = page.locator("input[placeholder*='Phone']");
+      if (phone.isVisible(new Locator.IsVisibleOptions().setTimeout(3000))) {
+        phone.fill(System.getenv("LOGIN_PHONE"));
+        page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
+        page.locator("button:has-text('Log in')").click();
+        page.waitForURL("**/index**", new Page.WaitForURLOptions().setTimeout(15000));
+        System.out.println("✅ Logged in");
+      }
+
+      // 3️⃣ Start quiz
+      Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN')").first();
+      startBtn.waitFor(new Locator.WaitForOptions().setTimeout(15000));
+      startBtn.scrollIntoViewIfNeeded();
+      startBtn.click();
+      System.out.println("🖱️ Start clicked");
+
+      // 4️⃣ WAIT FOR QUIZ CONFIG (THIS IS WHERE YOU WERE FAILING)
+      page.waitForSelector("#subcategory-3", new Page.WaitForSelectorOptions().setTimeout(20000));
+
+      page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+      page.selectOption("#mySelect", new SelectOption().setValue("97"));
+
+      page.locator("a[onclick*='advanced']").click();
+      page.locator("button:has-text('START')").click();
+
+      // 5️⃣ Verify iframe exists
+      page.waitForSelector("#iframeId", new Page.WaitForSelectorOptions().setTimeout(20000));
+      FrameLocator quiz = page.frameLocator("#iframeId");
+
+      // 6️⃣ Simple proof the quiz actually started
+      quiz.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(15000));
+      System.out.println("✅ Quiz loaded successfully");
+
+    } catch (Exception e) {
+      System.err.println("❌ CI FAILURE: " + e.getMessage());
+      throw e;
+    }
+  }
 }
 
-    @Test
-    public void startBot() {
-        loadData();
-        int totalQuestions = 97;
 
-        try (Playwright playwright = Playwright.create()) {
-            BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
-                .setHeadless(true)
-                .setArgs(Arrays.asList("--no-sandbox", "--disable-dev-shm-usage"))
-                .setViewportSize(1920, 1080);
+// import com.microsoft.playwright.*;
+// import com.microsoft.playwright.options.*;
+// import page.GroqService;
+// import com.google.gson.Gson;
+// import com.google.gson.reflect.TypeToken;
+// import org.junit.jupiter.api.Test;
+// import java.io.*;
+// import java.nio.file.Path;
+// import java.nio.file.Paths;
+// import java.util.*;
+// import com.microsoft.playwright.options.WaitForSelectorState;
 
-            BrowserContext context = playwright.chromium().launchPersistentContext(Paths.get("bot_profile"), options);
-            Page page = context.pages().get(0);
-            GroqService ai = new GroqService();
+// public class DoQuizTest {
+//     private static String lastProcessedQuestion = "";
+//     private static Map<String, String> masterDatabase = new HashMap<>();
+//     private static final String DATA_FILE = "statistics.json";
+//     private static int totalMarksGained = 0;
+//     private static final Random random = new Random();
+//     private static final int MAX_RETRIES = 2;
+//     private static final int QUESTION_TIMEOUT_MS = 15000; // Increased for GitHub lag
 
-            while (true) {
-                try {
-                    System.out.println("\n📊 STATS | MARKS: " + totalMarksGained + " | MEMORY: " + masterDatabase.size());
+//   private static void hardRestart(Page page) {
+//     lastProcessedQuestion = "";
+//     System.out.println("🔁 Restarting quiz and navigating to index...");
+//     page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
+//         new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+// }
+
+//     @Test
+//     public void startBot() {
+//         loadData();
+//         int totalQuestions = 97;
+
+//         try (Playwright playwright = Playwright.create()) {
+//             BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
+//                 .setHeadless(true)
+//                 .setArgs(Arrays.asList("--no-sandbox", "--disable-dev-shm-usage"))
+//                 .setViewportSize(1920, 1080);
+
+//             BrowserContext context = playwright.chromium().launchPersistentContext(Paths.get("bot_profile"), options);
+//             Page page = context.pages().get(0);
+//             GroqService ai = new GroqService();
+
+//             while (true) {
+//                 try {
+//                     System.out.println("\n📊 STATS | MARKS: " + totalMarksGained + " | MEMORY: " + masterDatabase.size());
                     
-                    // 1. Login Logic
-                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
-                    loginIfNeeded(page);
+//                     // 1. Login Logic
+//                     page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
+//                     loginIfNeeded(page);
 
-                    // 2. Start Quiz Flow
-                    // Use a broader selector for the Start Earn button
-                    // 2. Start Quiz Flow
-System.out.println("🔍 Searching for Start button...");
+//                     // 2. Start Quiz Flow
+//                     // Use a broader selector for the Start Earn button
+//                     // 2. Start Quiz Flow
+// System.out.println("🔍 Searching for Start button...");
 
-// Broaden the search: look for the button by text OR by its specific link/onclick action
-Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN'), .btn-primary, button:visible").first();
+// // Broaden the search: look for the button by text OR by its specific link/onclick action
+// Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN'), .btn-primary, button:visible").first();
 
-try {
-    // Give it 15 seconds and force it to wait until visible
-    startBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+// try {
+//     // Give it 15 seconds and force it to wait until visible
+//     startBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
     
-    // Scroll it into view just in case GitHub's window is too small
-    startBtn.evaluate("element => element.scrollIntoView()");
+//     // Scroll it into view just in case GitHub's window is too small
+//     startBtn.evaluate("element => element.scrollIntoView()");
     
-    startBtn.click();
-    System.out.println("🖱️ Clicked Start button!");
-} catch (Exception e) {
-    System.out.println("❌ Could not find 'START EARN'. Printing page URL: " + page.url());
-    // If it fails, take a screenshot so we can see what the bot sees (Crucial for GitHub)
-    page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get("error_view.png")));
-    throw new Exception("Start button not found on " + page.url());
-}
-                    // startBtn.waitFor(new Locator.WaitForOptions().setTimeout(10000));
-                    // startBtn.click();
+//     startBtn.click();
+//     System.out.println("🖱️ Clicked Start button!");
+// } catch (Exception e) {
+//     System.out.println("❌ Could not find 'START EARN'. Printing page URL: " + page.url());
+//     // If it fails, take a screenshot so we can see what the bot sees (Crucial for GitHub)
+//     page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get("error_view.png")));
+//     throw new Exception("Start button not found on " + page.url());
+// }
+//                     // startBtn.waitFor(new Locator.WaitForOptions().setTimeout(10000));
+//                     // startBtn.click();
 
-                    page.locator("#subcategory-3").waitFor();
-                    page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
-                    page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
+//                     page.locator("#subcategory-3").waitFor();
+//                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+//                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
 
-                    page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
-                    page.click("//button[contains(text(),'START')]");
+//                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
+//                     page.click("//button[contains(text(),'START')]");
 
-                    // 3. Question Loop
-                    int currentQuestion = 1;
-                    while (currentQuestion <= totalQuestions) {
-                        try {
-                            FrameLocator quizFrame = page.frameLocator("#iframeId");
-                            quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(10000));
+//                     // 3. Question Loop
+//                     int currentQuestion = 1;
+//                     while (currentQuestion <= totalQuestions) {
+//                         try {
+//                             FrameLocator quizFrame = page.frameLocator("#iframeId");
+//                             quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(10000));
                             
-                            processQuestion(quizFrame, page, ai, currentQuestion);
-                            currentQuestion++;
-                        } catch (Exception e) {
-                            System.err.println("⚠️ Q" + currentQuestion + " Error: " + e.getMessage());
-                            page.reload(); // Try reloading the page if a question fails
-                            break; // Break to the main loop to restart properly
-                        }
-                    }
-                    saveData();
-                } catch (Exception e) {
-                    System.err.println("🔄 Loop Error: " + e.getMessage());
-                    hardRestart(page);
-                }
-            }
-        }
-    }
+//                             processQuestion(quizFrame, page, ai, currentQuestion);
+//                             currentQuestion++;
+//                         } catch (Exception e) {
+//                             System.err.println("⚠️ Q" + currentQuestion + " Error: " + e.getMessage());
+//                             page.reload(); // Try reloading the page if a question fails
+//                             break; // Break to the main loop to restart properly
+//                         }
+//                     }
+//                     saveData();
+//                 } catch (Exception e) {
+//                     System.err.println("🔄 Loop Error: " + e.getMessage());
+//                     hardRestart(page);
+//                 }
+//             }
+//         }
+//     }
 
-  private static void loginIfNeeded(Page page) {
-    try {
-        Locator phoneInput = page.locator("input[placeholder*='Phone']");
-        if (phoneInput.isVisible(new Locator.IsVisibleOptions().setTimeout(3000))) {
-            phoneInput.fill(System.getenv("LOGIN_PHONE"));
-            page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
-            page.click("//button[contains(., 'Log in')]");
+//   private static void loginIfNeeded(Page page) {
+//     try {
+//         Locator phoneInput = page.locator("input[placeholder*='Phone']");
+//         if (phoneInput.isVisible(new Locator.IsVisibleOptions().setTimeout(3000))) {
+//             phoneInput.fill(System.getenv("LOGIN_PHONE"));
+//             page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
+//             page.click("//button[contains(., 'Log in')]");
             
-            // Fixed the underscore here
-            page.waitForLoadState(LoadState.NETWORKIDLE);
-            System.out.println("✅ Auto-login successful");
-        }
-    } catch (Exception ignored) {}
-}
+//             // Fixed the underscore here
+//             page.waitForLoadState(LoadState.NETWORKIDLE);
+//             System.out.println("✅ Auto-login successful");
+//         }
+//     } catch (Exception ignored) {}
+// }
 
-    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
-        // Wait for question text
-        String qText = quizFrame.locator("#qTitle").innerText().trim();
-        if (qText.isEmpty() || qText.contains("Loading")) {
-            page.waitForTimeout(2000);
-            qText = quizFrame.locator("#qTitle").innerText().trim();
-        }
+//     private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
+//         // Wait for question text
+//         String qText = quizFrame.locator("#qTitle").innerText().trim();
+//         if (qText.isEmpty() || qText.contains("Loading")) {
+//             page.waitForTimeout(2000);
+//             qText = quizFrame.locator("#qTitle").innerText().trim();
+//         }
 
-        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
-        options.removeIf(String::isEmpty);
+//         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+//         options.removeIf(String::isEmpty);
 
-        String finalChoice;
-        if (masterDatabase.containsKey(qText)) {
-            finalChoice = masterDatabase.get(qText);
-        } else {
-            // AI Logic (Keep your existing Groq logic here)
-            finalChoice = options.get(random.nextInt(options.size())); // Placeholder
-        }
+//         String finalChoice;
+//         if (masterDatabase.containsKey(qText)) {
+//             finalChoice = masterDatabase.get(qText);
+//         } else {
+//             // AI Logic (Keep your existing Groq logic here)
+//             finalChoice = options.get(random.nextInt(options.size())); // Placeholder
+//         }
 
-        // Click the answer - Simplified for GitHub (No mouse movement needed)
-        quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first().click();
+//         // Click the answer - Simplified for GitHub (No mouse movement needed)
+//         quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first().click();
         
-        page.waitForTimeout(1000);
-        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+//         page.waitForTimeout(1000);
+//         quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
         
-        // Save Correct Answer Logic
-        try {
-            page.waitForTimeout(1000);
-            String resultText = quizFrame.locator("#lastBody").innerText();
-            if (resultText.contains("Correct:")) {
-                // ... same as your existing logic to parse correct answer ...
-                saveData();
-            }
-        } catch (Exception ignored) {}
-    }
+//         // Save Correct Answer Logic
+//         try {
+//             page.waitForTimeout(1000);
+//             String resultText = quizFrame.locator("#lastBody").innerText();
+//             if (resultText.contains("Correct:")) {
+//                 // ... same as your existing logic to parse correct answer ...
+//                 saveData();
+//             }
+//         } catch (Exception ignored) {}
+//     }
 
-    private static void loadData() { /* Existing loadData code */ }
-    private static void saveData() { /* Existing saveData code */ }
-}
+//     private static void loadData() { /* Existing loadData code */ }
+//     private static void saveData() { /* Existing saveData code */ }
+// }
 
 // import com.microsoft.playwright.*;
 // import com.microsoft.playwright.options.*;
