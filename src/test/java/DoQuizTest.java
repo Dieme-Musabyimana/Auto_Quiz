@@ -24,14 +24,12 @@ public class DoQuizTest {
     private static final int QUESTION_TIMEOUT_MS = 10000;
 
     // ==================== HARD RESTART FUNCTION ====================
-    private static void hardRestart(Page page) {
+private static void hardRestart(Page page) {
         lastProcessedQuestion = "";
         System.out.println("🔁 Restarting quiz from beginning...");
-        page.navigate(
-                System.getenv("QUIZ_LINK"),
-                // new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-          new page.waitForURL("**/index", new Page.WaitForURLOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-        );
+        page.navigate(System.getenv("QUIZ_LINK"));
+        // Remove 'new' from the front and use WaitForURLOptions
+        page.waitForURL("**/index", new Page.WaitForURLOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
     }
 
     // Changed from 'public static void main' to '@Test' for Maven
@@ -183,8 +181,8 @@ public class DoQuizTest {
                 phoneInput.fill(System.getenv("LOGIN_PHONE"));
                 page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
                 page.click("//button[contains(., 'Log in')]");
-                page.waitForURL("**/index",
-                        new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+               page.waitForURL("**/index", 
+                        new Page.WaitForURLOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
                 context.storageState(
                         new BrowserContext.StorageStateOptions()
                                 .setPath(Paths.get("state.json"))
