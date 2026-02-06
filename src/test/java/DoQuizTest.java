@@ -29,7 +29,8 @@ public class DoQuizTest {
         System.out.println("🔁 Restarting quiz from beginning...");
         page.navigate(
                 System.getenv("QUIZ_LINK"),
-                new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                // new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+          new page.waitForURL("**/index", new Page.WaitForURLOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
         );
     }
 
