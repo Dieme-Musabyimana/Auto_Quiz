@@ -18,13 +18,12 @@ public class DoQuizTest {
     private static final int MAX_RETRIES = 2;
     private static final int QUESTION_TIMEOUT_MS = 15000; // Increased for GitHub lag
 
-    private static void hardRestart(Page page) {
-        lastProcessedQuestion = "";
-        System.out.println("🔁 Restarting quiz and navigating to index...");
-        // Use the direct URL to ensure we are on the right page
-        page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
-            new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORK_IDLE));
-    }
+  private static void hardRestart(Page page) {
+    lastProcessedQuestion = "";
+    System.out.println("🔁 Restarting quiz and navigating to index...");
+    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
+        new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+}
 
     @Test
     public void startBot() {
@@ -86,18 +85,20 @@ public class DoQuizTest {
         }
     }
 
-    private static void loginIfNeeded(Page page) {
-        try {
-            Locator phoneInput = page.locator("input[placeholder*='Phone']");
-            if (phoneInput.isVisible(new Locator.IsVisibleOptions().setTimeout(3000))) {
-                phoneInput.fill(System.getenv("LOGIN_PHONE"));
-                page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
-                page.click("//button[contains(., 'Log in')]");
-                page.waitForLoadState(LoadState.NETWORK_IDLE);
-                System.out.println("✅ Auto-login successful");
-            }
-        } catch (Exception ignored) {}
-    }
+  private static void loginIfNeeded(Page page) {
+    try {
+        Locator phoneInput = page.locator("input[placeholder*='Phone']");
+        if (phoneInput.isVisible(new Locator.IsVisibleOptions().setTimeout(3000))) {
+            phoneInput.fill(System.getenv("LOGIN_PHONE"));
+            page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
+            page.click("//button[contains(., 'Log in')]");
+            
+            // Fixed the underscore here
+            page.waitForLoadState(LoadState.NETWORKIDLE);
+            System.out.println("✅ Auto-login successful");
+        }
+    } catch (Exception ignored) {}
+}
 
     private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
         // Wait for question text
