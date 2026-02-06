@@ -12,7 +12,6 @@ target/
 # Logs & Data
 *.log
 *.png
-statistics.json
 masterDatabase.json
 quiz_results.txt
 
