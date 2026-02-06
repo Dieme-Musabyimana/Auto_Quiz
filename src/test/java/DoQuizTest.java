@@ -8,6 +8,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import com.microsoft.playwright.options.WaitForSelectorState;
 
 public class DoQuizTest {
     private static String lastProcessedQuestion = "";
@@ -50,9 +51,29 @@ public class DoQuizTest {
 
                     // 2. Start Quiz Flow
                     // Use a broader selector for the Start Earn button
-                    Locator startBtn = page.locator("button:has-text('START EARN'), button:has-text('EARN')").first();
-                    startBtn.waitFor(new Locator.WaitForOptions().setTimeout(10000));
-                    startBtn.click();
+                    // 2. Start Quiz Flow
+System.out.println("🔍 Searching for Start button...");
+
+// Broaden the search: look for the button by text OR by its specific link/onclick action
+Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN'), .btn-primary, button:visible").first();
+
+try {
+    // Give it 15 seconds and force it to wait until visible
+    startBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+    
+    // Scroll it into view just in case GitHub's window is too small
+    startBtn.evaluate("element => element.scrollIntoView()");
+    
+    startBtn.click();
+    System.out.println("🖱️ Clicked Start button!");
+} catch (Exception e) {
+    System.out.println("❌ Could not find 'START EARN'. Printing page URL: " + page.url());
+    // If it fails, take a screenshot so we can see what the bot sees (Crucial for GitHub)
+    page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get("error_view.png")));
+    throw new Exception("Start button not found on " + page.url());
+}
+                    // startBtn.waitFor(new Locator.WaitForOptions().setTimeout(10000));
+                    // startBtn.click();
 
                     page.locator("#subcategory-3").waitFor();
                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
