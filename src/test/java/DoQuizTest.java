@@ -1,17 +1,16 @@
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import page.GroqService;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-// Added for Maven/JUnit execution
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.regex.Pattern;
 
 public class DoQuizTest {
 
@@ -27,12 +26,12 @@ public class DoQuizTest {
     private static void hardRestart(Page page) {
         lastProcessedQuestion = "";
         System.out.println("🔁 Restarting quiz from beginning...");
+
+        // Go back to the quiz URL
         page.navigate(System.getenv("QUIZ_LINK"));
-        // Wait until we are back on the index page (URL containing "/index")
-        page.waitForURL(
-            Pattern.compile(".*/index.*"),
-            new Page.WaitForURLOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-        );
+
+        // Wait until the URL matches the quiz link again
+        page.waitForURL(System.getenv("QUIZ_LINK"));
     }
 
     @Test
@@ -81,7 +80,8 @@ public class DoQuizTest {
 
                     page = loginIfNeeded(page, context);
 
-                    page.navigate(System.getenv("QUIZ_LINK"), new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    page.navigate(System.getenv("QUIZ_LINK"),
+                        new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
 
                     Locator startBtn = page.locator("button:has-text('START EARN')");
                     startBtn.waitFor();
@@ -91,7 +91,7 @@ public class DoQuizTest {
                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
 
-                    page.click("//a[contains(@onclick,\"selectLevel('advanced')\")] ");
+                    page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]" );
                     page.click("//button[contains(text(),'START')]");
 
                     FrameLocator quizFrame = page.frameLocator("#iframeId");
@@ -109,7 +109,8 @@ public class DoQuizTest {
                                 while (true) {
                                     try {
                                         quizFrameRetry = page.frameLocator("#iframeId");
-                                        quizFrameRetry.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(5000));
+                                        quizFrameRetry.locator("#qTitle").waitFor(
+                                            new Locator.WaitForOptions().setTimeout(5000));
                                         break;
                                     } catch (PlaywrightException e) {
                                         System.out.println("⚠️ Waiting for quiz frame... retrying in 5s");
@@ -153,27 +154,36 @@ public class DoQuizTest {
                 page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
                 page.click("//button[contains(., 'Log in')]");
 
-                // Wait until we reach a URL containing "/index" after login
-                page.waitForURL(
-                    Pattern.compile(".*/index.*"),
-                    new Page.WaitForURLOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                );
+                // After login, wait until we are back on the main quiz URL
+                page.waitForURL(System.getenv("QUIZ_LINK"));
 
-                context.storageState(new BrowserContext.StorageStateOptions().setPath(Paths.get("state.json")));
+                context.storageState(
+                    new BrowserContext.StorageStateOptions().setPath(Paths.get("state.json"))
+                );
                 System.out.println("✅ Auto-login successful");
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return page;
     }
 
-    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i, long questionStartTime) throws Exception {
+    private static void processQuestion(
+        FrameLocator quizFrame,
+        Page page,
+        GroqService ai,
+        int i,
+        long questionStartTime
+    ) throws Exception {
         int cycles = 0;
         String qText = "";
         while (cycles < QUESTION_TIMEOUT_MS / 200) {
             try {
                 qText = quizFrame.locator("#qTitle").innerText().trim();
-                if (!qText.isEmpty() && !qText.contains("Loading") && !qText.equals(lastProcessedQuestion)) break;
-            } catch (Exception ignored) {}
+                if (!qText.isEmpty() && !qText.contains("Loading") && !qText.equals(lastProcessedQuestion)) {
+                    break;
+                }
+            } catch (Exception ignored) {
+            }
             page.waitForTimeout(200);
             cycles++;
             if (System.currentTimeMillis() - questionStartTime > 10_000) {
@@ -183,12 +193,16 @@ public class DoQuizTest {
             }
         }
 
-        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) throw new Exception("Question not loaded properly");
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) {
+            throw new Exception("Question not loaded properly");
+        }
         lastProcessedQuestion = qText;
 
         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
         options.removeIf(String::isEmpty);
-        if (options.isEmpty()) throw new Exception("No answer options loaded");
+        if (options.isEmpty()) {
+            throw new Exception("No answer options loaded");
+        }
 
         String finalChoice;
         if (masterDatabase.containsKey(qText)) {
@@ -202,19 +216,29 @@ public class DoQuizTest {
             }
             promptBuilder.append("Respond with the exact NUMBER of the correct option only.");
 
-            String aiResponse = ai.askAI(promptBuilder.toString()).replaceAll("[^0-9]", "").trim();
+            String aiResponse = ai.askAI(promptBuilder.toString())
+                .replaceAll("[^0-9]", "")
+                .trim();
+
             int choiceIndex;
             try {
                 int number = Integer.parseInt(aiResponse);
-                choiceIndex = (number >= 1 && number <= options.size()) ? number - 1 : random.nextInt(options.size());
+                if (number >= 1 && number <= options.size()) {
+                    choiceIndex = number - 1;
+                } else {
+                    choiceIndex = random.nextInt(options.size());
+                }
             } catch (Exception e) {
                 choiceIndex = random.nextInt(options.size());
             }
+
             finalChoice = options.get(choiceIndex);
             System.out.println("📝 Q" + i + " [AI] Chose option " + (choiceIndex + 1) + ": " + finalChoice);
         }
 
-        Locator answerLocator = quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first();
+        Locator answerLocator = quizFrame.locator(".opt")
+            .filter(new Locator.FilterOptions().setHasText(finalChoice))
+            .first();
         mouseMoveHumanLike(page, answerLocator);
         answerLocator.waitFor(new Locator.WaitForOptions().setTimeout(5000));
         answerLocator.click();
@@ -233,17 +257,21 @@ public class DoQuizTest {
                 if (correctIndex >= 0 && correctIndex < options.size()) {
                     String actualAns = options.get(correctIndex);
                     masterDatabase.put(qText, actualAns);
-                    if (finalChoice.equalsIgnoreCase(actualAns)) totalMarksGained++;
+                    if (finalChoice.equalsIgnoreCase(actualAns)) {
+                        totalMarksGained++;
+                    }
                     saveData();
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private static void mouseMoveHumanLike(Page page, Locator locator) {
         try {
             com.microsoft.playwright.options.BoundingBox box = locator.boundingBox();
             if (box == null) return;
+
             double startX = box.x + box.width / 2;
             double startY = box.y + box.height / 2;
             for (int i = 1; i <= 5; i++) {
@@ -252,7 +280,8 @@ public class DoQuizTest {
                 page.mouse().move(x, y);
                 Thread.sleep(20 + (int) (Math.random() * 30));
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private static void humanWait(Page page, int min, int max) {
@@ -265,22 +294,35 @@ public class DoQuizTest {
             data.put("database", masterDatabase);
             data.put("totalMarks", totalMarksGained);
             new Gson().toJson(data, writer);
-        } catch (IOException ignored) {}
+        } catch (IOException ignored) {
+        }
     }
 
+    @SuppressWarnings("unchecked")
     private static void loadData() {
         try {
             File file = new File(DATA_FILE);
             if (file.exists()) {
-                Reader reader = new FileReader(file);
-                Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
-                if (data != null) {
-                    if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
-                    if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
+                try (Reader reader = new FileReader(file)) {
+                    Map<String, Object> data = new Gson().fromJson(
+                        reader,
+                        new TypeToken<Map<String, Object>>() {}.getType()
+                    );
+                    if (data != null) {
+                        Object db = data.get("database");
+                        if (db instanceof Map) {
+                            masterDatabase = (Map<String, String>) db;
+                        }
+                        Object total = data.get("totalMarks");
+                        if (total instanceof Number) {
+                            totalMarksGained = ((Number) total).intValue();
+                        }
+                    }
                 }
                 System.out.println("📂 Memory Loaded: " + masterDatabase.size());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 }
 
