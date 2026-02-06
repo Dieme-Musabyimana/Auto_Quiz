@@ -26,12 +26,18 @@ jobs:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
-        run: mvn test -Dtest=doQuiz        # Fixed "mvnn" and spacing
+        # Changed to DoQuizTest to match your new file name
+        run: mvn test -Dtest=DoQuizTest
 
-      - name: Commit and Push Progress     # Save memory
+      - name: Commit and Push Progress
         run: |
-          git config --global user.name "QuizBot"
           git config --global user.email "bot@github.com"
-          git add statistics.json bot_profile/
-          git commit -m "🤖 Update learned answers" || echo "No changes"
-          git push
+          git config --global user.name "QuizBot"
+          git add statistics.json
+          # Check if there are changes before committing to avoid Error 128
+          if git diff --staged --quiet; then
+            echo "No changes in statistics.json to commit."
+          else
+            git commit -m "🔄 Update quiz statistics [skip ci]"
+            git push
+          fi
