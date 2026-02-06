@@ -1,4 +1,4 @@
-// TEST RUN - VERSION 3.0
+// TEST RUN - VERSION 3
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import page.GroqService;
