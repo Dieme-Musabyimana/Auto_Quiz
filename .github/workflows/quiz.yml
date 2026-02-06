@@ -18,7 +18,7 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers
-        # Running directly from root where pom.xml is visible
+        # Running from root where pom.xml is located
         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
 
       - name: Run Bot
@@ -35,7 +35,7 @@ jobs:
           git config --global user.name "QuizBot"
           git config --global user.email "bot@github.com"
           
-          # Since statistics.json is at the root (see image_82ea20.png)
+          # statistics.json is at the root level
           if [ -f "statistics.json" ]; then 
             git add statistics.json
           fi
