@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 * * * *'  # Runs every hour
   workflow_dispatch:
 
 permissions:
@@ -14,53 +12,45 @@ permissions:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
       # 1️⃣ Checkout the repository
-      - uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-      # 2️⃣ Set up JDK 21 (Microsoft distribution) and cache Maven
-      - name: Set up JDK 25
+      # 2️⃣ Set up JDK 21 (compatible with your code)
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '21'
           distribution: 'microsoft'
           cache: maven
 
-      # 3️⃣ Install Playwright Browsers & Linux dependencies
-      - name: Install Playwright Browsers & System Deps
-        run: |
-          mvn exec:java -e -Dexec.args="install chromium"
-          sudo mvn exec:java -e -Dexec.args="install-deps chromium"
+      # 3️⃣ Install Playwright browsers
+      - name: Install Playwright Browsers
+        run: mvn com.microsoft.playwright:playwright-cli:1.49.0:install
 
-      # 4️⃣ Run the bot test
+      # 4️⃣ Run the Quiz Bot
       - name: Run Bot
         env:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: mvn test -Dtest=DoQuizTest
-        continue-on-error: true
+          LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+          API_KEY: ${{ secrets.API_KEY }}
+          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
+        run: |
+          echo "🟢 Starting Quiz Bot..."
+          mvn compile exec:java -Dexec.mainClass="doQuiz"
 
-      # 5️⃣ Upload debug screenshots even if test fails
-      - name: Upload Debug Screenshots
+      # 5️⃣ Upload statistics.json and state.json as artifacts for debugging
+      - name: Upload Debug Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bot-debug-files
+          name: bot-debug
           path: |
-            error_view.png
-            failed_to_find_btn.png
-          if-no-files-found: ignore
+            statistics.json
+            state.json
 
-      # 6️⃣ Commit and push progress (fixed multiline if)
-      - name: Commit and Push Progress
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          # Only commit if statistics.json exists and has changes
-          if [ -f "statistics.json" ]; then
-            git add statistics.json
-            git diff-index --quiet HEAD || git commit -m "🤖 Update learned answers [skip ci]"
-            git push || echo "Nothing to push"
-          fi
+      # 6️⃣ Optional: notify on failure (Slack, email, etc.) if needed
