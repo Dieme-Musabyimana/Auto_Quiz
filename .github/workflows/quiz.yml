@@ -1,3 +1,51 @@
+# name: Run Quiz Bot
+# on:
+#   push:
+#     branches:
+#       - main
+#   schedule:
+#     - cron: '0 * * * *'
+#   workflow_dispatch:
+
+# jobs:
+#   run-bot:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Set up JDK 25
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '25'
+#           distribution: 'microsoft'
+#           cache: maven
+
+#       - name: Install Playwright Browsers & Deps
+#         # This now includes --with-deps to satisfy the Linux host requirements
+#         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install --with-deps chromium"
+
+#       - name: Run Bot
+#         env:
+#           QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
+#           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
+#           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
+#           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+#         run: mvn test -Dtest=DoQuizTest
+
+#       - name: Commit and Push Progress
+#         run: |
+#           git config --global user.name "QuizBot"
+#           git config --global user.email "bot@github.com"
+#           if [ -f "statistics.json" ]; then 
+#             git add statistics.json
+#           fi
+#           if git diff --staged --quiet; then
+#             echo "No changes to commit."
+#           else
+#             git commit -m "🤖 Update learned answers [skip ci]"
+#             git push
+#           fi
+
 name: Run Quiz Bot
 on:
   push:
@@ -20,9 +68,11 @@ jobs:
           distribution: 'microsoft'
           cache: maven
 
-      - name: Install Playwright Browsers & Deps
-        # This now includes --with-deps to satisfy the Linux host requirements
-        run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install --with-deps chromium"
+      - name: Install Playwright Browsers & System Deps
+        # We use 'install-deps' separately with sudo to ensure the Linux OS is ready
+        run: |
+          mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
+          sudo mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install-deps chromium"
 
       - name: Run Bot
         env:
@@ -46,51 +96,4 @@ jobs:
             git push
           fi
           
-  # name: Run Quiz Bot
-# on:
-#   schedule:
-#     - cron: '0 * * * *'
-#   workflow_dispatch:
-
-# jobs:
-#   run-bot:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-
-#       - name: Set up JDK 25
-#         uses: actions/setup-java@v4
-#         with:
-#           java-version: '25'
-#           distribution: 'microsoft'
-#           cache: maven
-
-#       - name: Install Playwright Browsers
-#         # Running from root where pom.xml is located
-#         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
-
-#       - name: Run Bot
-#         env:
-#           QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
-#           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
-#           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
-#           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
-#         # Maven will automatically find DoQuizTest.java in src/test/java
-#         run: mvn test -Dtest=DoQuizTest
-
-#       - name: Commit and Push Progress
-#         run: |
-#           git config --global user.name "QuizBot"
-#           git config --global user.email "bot@github.com"
-          
-#           # statistics.json is at the root level
-#           if [ -f "statistics.json" ]; then 
-#             git add statistics.json
-#           fi
-          
-#           if git diff --staged --quiet; then
-#             echo "No changes to commit."
-#           else
-#             git commit -m "🤖 Update learned answers [skip ci]"
-#             git push
-#           fi
+ 
