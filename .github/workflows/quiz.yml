@@ -1,0 +1,37 @@
+name: Run Quiz Bot                         # Name of the workflow
+on:                                        # When to run
+  schedule:
+    - cron: '0 * * * *'                    # Every hour
+  workflow_dispatch:                       # Manual button
+
+jobs:
+  run-bot:                                 # Job ID (no spaces)
+    runs-on: ubuntu-latest                 # Use Linux
+    steps:
+      - uses: actions/checkout@v4          # Get your code
+
+      - name: Set up JDK 25                # Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+          cache: maven
+
+      - name: Install Playwright Browsers  # Get the browser
+        run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
+
+      - name: Run Bot                      # Execute the Java code
+        env:                               # Connect your Secrets
+          QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
+          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
+          LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
+          LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+        run: mvn test -Dtest=doQuiz        # Fixed "mvnn" and spacing
+
+      - name: Commit and Push Progress     # Save memory
+        run: |
+          git config --global user.name "QuizBot"
+          git config --global user.email "bot@github.com"
+          git add statistics.json bot_profile/
+          git commit -m "🤖 Update learned answers" || echo "No changes"
+          git push
