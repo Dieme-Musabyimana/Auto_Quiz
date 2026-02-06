@@ -1,14 +1,14 @@
 name: Run Quiz Bot
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *'                    # Runs every hour
+  workflow_dispatch:                       # Allows manual run
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4          # Downloads your code
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -18,27 +18,37 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers
-        working-directory: ./Auto_Quiz
+        working-directory: ./Auto_Quiz     # Move into folder before running
         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
 
       - name: Run Bot
-        working-directory: ./Auto_Quiz
+        working-directory: ./Auto_Quiz     # Move into folder before running
         env:
           QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+        # Make sure your file is renamed to DoQuizTest.java inside src/test/java/
         run: mvn test -Dtest=DoQuizTest
 
       - name: Commit and Push Progress
         run: |
-          git config --global user.email "bot@github.com"
           git config --global user.name "QuizBot"
-          # We point directly to the file inside the subfolder
-          git add Auto_Quiz/statistics.json
+          git config --global user.email "bot@github.com"
+          
+          # Tell Git to look specifically inside the Auto_Quiz folder
+          if [ -f "Auto_Quiz/statistics.json" ]; then 
+            git add Auto_Quiz/statistics.json
+          fi
+          
+          if [ -d "Auto_Quiz/bot_profile" ]; then
+            git add Auto_Quiz/bot_profile/
+          fi
+
+          # Only commit if there are actual new answers to save
           if git diff --staged --quiet; then
             echo "No changes in statistics.json to commit."
           else
-            git commit -m "🔄 Update quiz statistics [skip ci]"
+            git commit -m "🤖 Update learned answers [skip ci]"
             git push
           fi
