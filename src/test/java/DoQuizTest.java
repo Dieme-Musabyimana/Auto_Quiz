@@ -1,78 +1,179 @@
-name: Run Quiz Bot
 
-on:
-  push:
-    branches:
-      - main
-  schedule:
-    - cron: '0 * * * *'  # Runs every hour
-  workflow_dispatch:
+ import com.google.gson.reflect.TypeToken;
+import org.junit.jupiter.api.Test;
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import com.microsoft.playwright.options.WaitForSelectorState;
 
-permissions:
-  contents: write
+public class DoQuizTest {
+    private static Map<String, String> masterDatabase = new HashMap<>();
+    private static final String DATA_FILE = "statistics.json";
+    private static int totalMarksGained = 0;
+    private static final Random random = new Random();
 
-jobs:
-  run-bot:
-    runs-on: ubuntu-latest
+    // Helper method for resilient clicking/interaction
+    private void smartInteract(Locator locator, String description) {
+        try {
+            System.out.println("🔍 Finding: " + description);
+            locator.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            locator.evaluate("el => el.scrollIntoView()");
+            locator.click();
+        } catch (Exception e) {
+            System.err.println("❌ Failed to interact with: " + description);
+            throw e;
+        }
+    }
 
-    steps:
-      - uses: actions/checkout@v4
+    private static void hardRestart(Page page) {
+        System.out.println("🔁 Restarting quiz and navigating to index...");
+        page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
+            new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+    }
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'microsoft'
-          cache: maven
+@Test
+    public void startBot() {
+        loadData();
+        int totalQuestions = 97;
+@@ -53,78 +32,76 @@ public void startBot() {
+            while (true) {
+                try {
+                    System.out.println("\n📊 STATS | MARKS: " + totalMarksGained + " | MEMORY: " + masterDatabase.size());
+                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
 
-      - name: Install system dependencies for Playwright
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwoff1 \
-            libvpx9 \
-            libevent-2.1-7 \
-            libopus0 \
-            libgstreamer-plugins-base1.0-0 \
-            libgstreamer-gl1.0-0 \
-            libgstreamer-plugins-bad1.0-0 \
-            libflite1 \
-            libavif16 \
-            libharfbuzz-icu0 \
-            libsecret-1-0 \
-            libhyphen0 \
-            libwayland-server0 \
-            libmanette-0.2-0 \
-            libgles2 \
-            gstreamer1.0-libav
 
-      - name: Install Playwright browsers
-        run: |
-          npx playwright install chromium
 
-      - name: Run Bot
-        env:
-          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
-          LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: mvn test -Dtest=DoQuizTest
-        continue-on-error: true
 
-      - name: Upload Debug Screenshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bot-debug-files
-          path: |
-            error_view.png
-            failed_to_find_btn.png
-          if-no-files-found: ignore
+                    loginIfNeeded(page);
 
-      - name: Commit and Push Progress
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -f "statistics.json" ]; then
-            git add statistics.json
-            git commit -m "🤖 Update learned answers [skip ci]" || echo "No changes to commit"
-            git push
+                    // --- STEP 1: RESILIENT START EARN CLICK ---
+                    Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN'), .btn-primary").first();
+                    startBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+
+                    // Click until the URL changes or the dropdown appears (Max 3 tries)
+                    for (int i = 0; i < 3; i++) {
+                        startBtn.click(new Locator.ClickOptions().setForce(true));
+                        page.waitForTimeout(3000); // Wait for page reaction
+                        if (page.locator("#subcategory-3").isVisible()) break;
+                        System.out.println("⚠️ Click didn't trigger dropdown, retrying...");
+                    }
+
+                    // --- STEP 2: SELECT DROPDOWNS ---
+                    System.out.println("✅ Menu loaded. Selecting options...");
+                    Locator subCategory = page.locator("#subcategory-3");
+                    subCategory.selectOption(new SelectOption().setIndex(2));
+                    
+                    page.locator("#mySelect").selectOption(new SelectOption().setValue(String.valueOf(totalQuestions)));
+
+                    // --- STEP 3: SELECT LEVEL & LAUNCH ---
+                    // Using direct JavaScript click because buttons in modals are often 'unclickable' by standard Playwright on Linux
+                    page.evaluate("() => { " +
+                        "document.querySelector(\"a[onclick*='selectLevel']\").click(); " +
+                        "setTimeout(() => { document.querySelector(\"button:has-text('START'), #startBtn\").click(); }, 1000);" +
+                        "}");
+
+                    System.out.println("🚀 Quiz Launched via JS execution.");
+
+                    // --- STEP 4: QUESTION LOOP ---
+                    int currentQuestion = 1;
+                    while (currentQuestion <= totalQuestions) {
+                        try {
+                            FrameLocator quizFrame = page.frameLocator("#iframeId");
+                            quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(20000));
+
+
+                            processQuestion(quizFrame, page, ai, currentQuestion);
+                            currentQuestion++;
+                        } catch (Exception e) {
+                            System.err.println("⚠️ Q" + currentQuestion + " Error. Reloading...");
+                            page.reload(); 
+                            break; 
+                        }
+                    }
+                    saveData();
+                } catch (Exception e) {
+                    System.err.println("🔄 Loop Error: " + e.getMessage());
+                    page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get("error_view.png")));
+                    hardRestart(page);
+                }
+            }
+        }
+    }
+
+    private static void loginIfNeeded(Page page) {
+        try {
+            Locator phoneInput = page.locator("input[placeholder*='Phone']").first();
+            if (phoneInput.isVisible(new Locator.IsVisibleOptions().setTimeout(3000))) {
+                phoneInput.fill(System.getenv("LOGIN_PHONE"));
+                page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
+                page.click("//button[contains(., 'Log in')]");
+                page.waitForLoadState(LoadState.NETWORKIDLE);
+                System.out.println("✅ Auto-login successful");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
+        Locator qTitle = quizFrame.locator("#qTitle");
+        String qText = qTitle.innerText().trim();
+        
+        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+        options.removeIf(String::isEmpty);
+
+@@ -133,46 +110,41 @@ private static void processQuestion(FrameLocator quizFrame, Page page, GroqServi
+            finalChoice = masterDatabase.get(qText);
+            System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
+        } else {
+            // AI PROMPT
+            StringBuilder prompt = new StringBuilder("Question: " + qText + "\nOptions:\n");
+            for (int idx = 0; idx < options.size(); idx++) prompt.append(idx + 1).append(") ").append(options.get(idx)).append("\n");
+            prompt.append("Respond with ONLY the NUMBER of the correct option.");
+
+            String aiResponse = ai.askAI(prompt.toString()).replaceAll("[^0-9]", "").trim();
+            int choiceIndex = 0;
+            try {
+                int num = Integer.parseInt(aiResponse);
+                choiceIndex = (num >= 1 && num <= options.size()) ? num - 1 : random.nextInt(options.size());
+            } catch (Exception e) { choiceIndex = random.nextInt(options.size()); }
+
+            finalChoice = options.get(choiceIndex);
+            System.out.println("📝 Q" + i + " [AI] " + finalChoice);
+        }
+
+        // Resilient Click on Option
+        Locator choiceLoc = quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first();
+        choiceLoc.click();
+        
+        page.waitForTimeout(500);
+        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+
+        // LEARNING
+        try {
+            page.waitForTimeout(2000); 
+            String resultText = quizFrame.locator("#lastBody").innerText();
+            if (resultText.contains("Correct:")) {
+                String letter = resultText.split("Correct:")[1].trim().substring(0, 1);
+                int correctIdx = letter.toUpperCase().charAt(0) - 'A';
+                if (correctIdx >= 0 && correctIdx < options.size()) {
+                    masterDatabase.put(qText, options.get(correctIdx));
+                    if (finalChoice.equalsIgnoreCase(options.get(correctIdx))) totalMarksGained++;
+
+                    saveData();
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private static void saveData() {
+        try (Writer writer = new FileWriter(DATA_FILE)) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("database", masterDatabase);
+@@ -181,7 +153,7 @@ private static void saveData() {
+        } catch (Exception ignored) {}
+    }
+
+    private static void loadData() {
+        try {
+            File file = new File(DATA_FILE);
+            if (file.exists()) {
