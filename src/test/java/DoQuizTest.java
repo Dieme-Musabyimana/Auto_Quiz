@@ -4,11 +4,13 @@ import page.GroqService;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
+
 import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
 
 public class DoQuizTest {
+
     private static Map<String, String> masterDatabase = new HashMap<>();
     private static final String DATA_FILE = "statistics.json";
     private static int totalMarksGained = 0;
@@ -16,124 +18,200 @@ public class DoQuizTest {
 
     @Test
     public void startBot() {
+
         loadData();
         int totalQuestions = 97;
 
         try (Playwright playwright = Playwright.create()) {
-            BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
-                .setHeadless(true)
-                .setArgs(Arrays.asList("--no-sandbox", "--disable-dev-shm-usage"))
-                .setViewportSize(1920, 1080);
 
-            BrowserContext context = playwright.chromium().launchPersistentContext(Paths.get("bot_profile"), options);
+            BrowserType.LaunchPersistentContextOptions options =
+                    new BrowserType.LaunchPersistentContextOptions()
+                            .setHeadless(true)
+                            .setViewportSize(1920, 1080)
+                            .setArgs(Arrays.asList(
+                                    "--no-sandbox",
+                                    "--disable-dev-shm-usage",
+                                    "--disable-blink-features=AutomationControlled"
+                            ));
+
+            BrowserContext context =
+                    playwright.chromium().launchPersistentContext(
+                            Paths.get("bot_profile"), options);
+
             Page page = context.pages().get(0);
             GroqService ai = new GroqService();
 
             while (true) {
                 try {
-                    System.out.println("\n📊 STATS | MARKS: " + totalMarksGained + " | MEMORY: " + masterDatabase.size());
-                    
-                    // Increased timeout for initial navigation
-                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
-                        new Page.NavigateOptions().setTimeout(60000).setWaitUntil(WaitUntilState.NETWORKIDLE));
-                    
+                    System.out.println("\n📊 STATS | MARKS: " + totalMarksGained +
+                            " | MEMORY: " + masterDatabase.size());
+
+                    page.navigate(
+                            "https://www.iwacusoft.com/ubumenyibwanjye/index",
+                            new Page.NavigateOptions()
+                                    .setTimeout(60000)
+                                    .setWaitUntil(WaitUntilState.NETWORKIDLE)
+                    );
+
+                    // ⚠ DO NOT TOUCH LOGIN LOGIC
                     loginIfNeeded(page);
 
-                    // 1. CLICK START EARN (With Retry)
-                    Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN')").first();
-                    startBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(30000));
-                    
-                    for(int attempt=0; attempt<3; attempt++) {
+                    // ===============================
+                    // START EARN (SAFE FOR CI)
+                    // ===============================
+                    Locator startBtn =
+                            page.locator("button:has-text('START EARN'), a:has-text('START EARN')").first();
+
+                    if (startBtn.count() > 0 && startBtn.isVisible()) {
+                        System.out.println("▶ START EARN found, clicking...");
                         startBtn.click(new Locator.ClickOptions().setForce(true));
                         page.waitForTimeout(2000);
-                        if (page.locator("#subcategory-3").isVisible()) break;
+                    } else {
+                        System.out.println("ℹ START EARN not visible — continuing");
                     }
 
-                    // 2. SETUP QUIZ (Resilient Selectors)
-                    page.locator("#subcategory-3").selectOption(new SelectOption().setIndex(2));
-                    page.waitForTimeout(1000);
-                    page.locator("#mySelect").selectOption(new SelectOption().setValue(String.valueOf(totalQuestions)));
-                    
-                    // JS Click for Advanced and Final Start (Most reliable on Linux)
-                    page.evaluate("() => { " +
-                        "const adv = document.querySelector(\"a[onclick*='advanced']\"); if(adv) adv.click(); " +
-                        "setTimeout(() => { const start = document.querySelector(\"button:has-text('START')\"); if(start) start.click(); }, 1500);" +
-                        "}");
-                    
-                    System.out.println("🚀 Quiz engine triggered.");
+                    // ===============================
+                    // WAIT FOR QUIZ SETUP (NO CRASH)
+                    // ===============================
+                    if (page.locator("#subcategory-3").count() == 0) {
+                        System.out.println("⏳ Quiz setup not ready, retrying...");
+                        page.waitForTimeout(5000);
+                        continue;
+                    }
 
-                    // 3. QUESTION LOOP
+                    page.locator("#subcategory-3")
+                            .selectOption(new SelectOption().setIndex(2));
+                    page.waitForTimeout(1000);
+
+                    page.locator("#mySelect")
+                            .selectOption(new SelectOption()
+                                    .setValue(String.valueOf(totalQuestions)));
+
+                    // JS click is more reliable on Linux runners
+                    page.evaluate("() => {" +
+                            "const adv = document.querySelector(\"a[onclick*='advanced']\");" +
+                            "if (adv) adv.click();" +
+                            "setTimeout(() => {" +
+                            " const start = document.querySelector(\"button:has-text('START')\");" +
+                            " if (start) start.click();" +
+                            "}, 1500);" +
+                            "}");
+
+                    System.out.println("🚀 Quiz engine started");
+
+                    // ===============================
+                    // QUESTION LOOP
+                    // ===============================
                     int currentQuestion = 1;
+
                     while (currentQuestion <= totalQuestions) {
                         try {
-                            FrameLocator quizFrame = page.frameLocator("#iframeId");
-                            // Longer wait for the frame to load content
-                            quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(30000));
-                            
+                            FrameLocator quizFrame =
+                                    page.frameLocator("#iframeId");
+
+                            quizFrame.locator("#qTitle")
+                                    .waitFor(new Locator.WaitForOptions()
+                                            .setTimeout(30000));
+
                             processQuestion(quizFrame, page, ai, currentQuestion);
                             currentQuestion++;
-                        } catch (Exception e) {
-                            System.err.println("⚠️ Q" + currentQuestion + " failed: " + e.getMessage());
-                            page.reload(); 
-                            break; 
+
+                        } catch (Exception qErr) {
+                            System.err.println("⚠ Question failed, reloading page");
+                            page.reload();
+                            page.waitForTimeout(5000);
+                            break;
                         }
                     }
+
                     saveData();
+
                 } catch (Exception e) {
                     System.err.println("🔄 Global Loop Error: " + e.getMessage());
-                    page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get("error_view.png")));
-                    page.waitForTimeout(5000); // Cool down before restart
+                    page.screenshot(new Page.ScreenshotOptions()
+                            .setPath(Paths.get("error_view.png")));
+                    page.waitForTimeout(5000);
                 }
             }
         }
     }
 
+    // ⚠ LOGIN LOGIC — UNTOUCHED
     private void loginIfNeeded(Page page) {
         try {
             Locator phone = page.locator("input[placeholder*='Phone']").first();
             if (phone.isVisible(new Locator.IsVisibleOptions().setTimeout(5000))) {
                 phone.fill(System.getenv("LOGIN_PHONE"));
-                page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
+                page.locator("input[placeholder*='PIN']")
+                        .fill(System.getenv("LOGIN_PIN"));
                 page.click("button:has-text('Log in')");
                 page.waitForLoadState(LoadState.NETWORKIDLE);
             }
         } catch (Exception ignored) {}
     }
 
-    private void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
+    private void processQuestion(
+            FrameLocator quizFrame,
+            Page page,
+            GroqService ai,
+            int i) throws Exception {
+
         String qText = quizFrame.locator("#qTitle").innerText().trim();
-        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+        List<String> options =
+                quizFrame.locator(".opt .txt").allInnerTexts();
         options.removeIf(String::isEmpty);
 
         String finalChoice;
+
         if (masterDatabase.containsKey(qText)) {
             finalChoice = masterDatabase.get(qText);
-            System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
+            System.out.println("📝 Q" + i + " [MEMORY] " + finalChoice);
         } else {
             StringBuilder prompt = new StringBuilder(qText + "\n");
-            for (int idx=0; idx<options.size(); idx++) prompt.append(idx+1).append(") ").append(options.get(idx)).append("\n");
+            for (int idx = 0; idx < options.size(); idx++) {
+                prompt.append(idx + 1).append(") ")
+                        .append(options.get(idx)).append("\n");
+            }
             prompt.append("Answer with ONLY the number.");
 
-            String res = ai.askAI(prompt.toString()).replaceAll("[^0-9]", "").trim();
-            int idx = 0;
-            try { idx = Integer.parseInt(res) - 1; } catch (Exception e) { idx = random.nextInt(options.size()); }
+            String res = ai.askAI(prompt.toString())
+                    .replaceAll("[^0-9]", "").trim();
+
+            int idx;
+            try {
+                idx = Integer.parseInt(res) - 1;
+            } catch (Exception e) {
+                idx = random.nextInt(options.size());
+            }
+
             if (idx < 0 || idx >= options.size()) idx = 0;
-            
             finalChoice = options.get(idx);
             System.out.println("📝 Q" + i + " [AI] " + finalChoice);
         }
 
-        quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first().click();
+        quizFrame.locator(".opt")
+                .filter(new Locator.FilterOptions()
+                        .setHasText(finalChoice))
+                .first()
+                .click();
+
         page.waitForTimeout(500);
-        quizFrame.locator("#submitBtn, button:has-text('Submit')").first().click();
-        
-        // Results & Learning
+
+        quizFrame.locator("#submitBtn, button:has-text('Submit')")
+                .first()
+                .click();
+
+        // Learn correct answer
         try {
             page.waitForTimeout(1500);
-            String result = quizFrame.locator("#lastBody").innerText();
+            String result =
+                    quizFrame.locator("#lastBody").innerText();
+
             if (result.contains("Correct:")) {
-                String correctLtr = result.split("Correct:")[1].trim().substring(0, 1).toUpperCase();
-                int correctIdx = correctLtr.charAt(0) - 'A';
+                String letter =
+                        result.split("Correct:")[1].trim().substring(0, 1);
+                int correctIdx = letter.charAt(0) - 'A';
+
                 if (correctIdx >= 0 && correctIdx < options.size()) {
                     String actual = options.get(correctIdx);
                     masterDatabase.put(qText, actual);
@@ -158,15 +236,21 @@ public class DoQuizTest {
             File file = new File(DATA_FILE);
             if (file.exists()) {
                 Reader reader = new FileReader(file);
-                Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
+                Map<String, Object> data =
+                        new Gson().fromJson(reader,
+                                new TypeToken<Map<String, Object>>() {}.getType());
                 if (data != null) {
-                    if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
-                    if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
+                    if (data.get("database") != null)
+                        masterDatabase = (Map<String, String>) data.get("database");
+                    if (data.get("totalMarks") != null)
+                        totalMarksGained =
+                                ((Double) data.get("totalMarks")).intValue();
                 }
             }
         } catch (Exception ignored) {}
     }
 }
+
 
 // import com.microsoft.playwright.*;
 // import com.microsoft.playwright.options.*;
