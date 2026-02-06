@@ -9,7 +9,7 @@ import java.net.http.HttpResponse;
 import java.util.Arrays; // Added for stealth args
 import java.util.Random;
 
-public class Shot {
+public class ShotTest {
     public static void main(String[] args) {
         try (Playwright playwright = Playwright.create()) {
             // 🛡️ ANTI-BOT LAYER 1: Launch Arguments
