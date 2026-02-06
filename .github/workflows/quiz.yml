@@ -18,12 +18,11 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers
-        # We use the double path because your pom.xml is nested two levels deep
-        working-directory: ./Auto_Quiz/Auto_Quiz  
+        working-directory: ./Auto_Quiz        # <--- Pointing to the single folder
         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
 
       - name: Run Bot
-        working-directory: ./Auto_Quiz/Auto_Quiz  
+        working-directory: ./Auto_Quiz        # <--- Pointing to the single folder
         env:
           QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
@@ -36,13 +35,13 @@ jobs:
           git config --global user.name "QuizBot"
           git config --global user.email "bot@github.com"
           
-          # Adjusting these paths to match your double-folder structure
-          if [ -f "Auto_Quiz/Auto_Quiz/statistics.json" ]; then 
-            git add Auto_Quiz/Auto_Quiz/statistics.json
+          # Adding from the correct relative path
+          if [ -f "Auto_Quiz/statistics.json" ]; then 
+            git add Auto_Quiz/statistics.json
           fi
           
-          if [ -d "Auto_Quiz/Auto_Quiz/bot_profile" ]; then
-            git add Auto_Quiz/Auto_Quiz/bot_profile/
+          if [ -d "Auto_Quiz/bot_profile" ]; then
+            git add Auto_Quiz/bot_profile/
           fi
 
           if git diff --staged --quiet; then
