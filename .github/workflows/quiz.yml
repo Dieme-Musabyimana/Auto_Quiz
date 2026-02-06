@@ -44,7 +44,9 @@ jobs:
           else
             git commit -m "🤖 Update learned answers [skip ci]"
             git push
-          fi# name: Run Quiz Bot
+          fi
+          
+  # name: Run Quiz Bot
 # on:
 #   schedule:
 #     - cron: '0 * * * *'
