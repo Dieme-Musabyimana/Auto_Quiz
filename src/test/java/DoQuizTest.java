@@ -35,7 +35,7 @@ public class DoQuizTest {
             new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
     }
 
-    @Test
+@Test
     public void startBot() {
         loadData();
         int totalQuestions = 97;
@@ -53,43 +53,47 @@ public class DoQuizTest {
             while (true) {
                 try {
                     System.out.println("\n📊 STATS | MARKS: " + totalMarksGained + " | MEMORY: " + masterDatabase.size());
-                    
                     page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
                     loginIfNeeded(page);
 
-                    // --- resilient START EARN button ---
+                    // --- STEP 1: RESILIENT START EARN CLICK ---
                     Locator startBtn = page.locator("button:has-text('START EARN'), a:has-text('START EARN'), .btn-primary").first();
-                    smartInteract(startBtn, "START EARN Button");
+                    startBtn.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+                    
+                    // Click until the URL changes or the dropdown appears (Max 3 tries)
+                    for (int i = 0; i < 3; i++) {
+                        startBtn.click(new Locator.ClickOptions().setForce(true));
+                        page.waitForTimeout(3000); // Wait for page reaction
+                        if (page.locator("#subcategory-3").isVisible()) break;
+                        System.out.println("⚠️ Click didn't trigger dropdown, retrying...");
+                    }
 
-                    // --- resilient DROPDOWNS ---
-                    Locator subCategory = page.locator("#subcategory-3, select[name*='category']").first();
-                    subCategory.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+                    // --- STEP 2: SELECT DROPDOWNS ---
+                    System.out.println("✅ Menu loaded. Selecting options...");
+                    Locator subCategory = page.locator("#subcategory-3");
                     subCategory.selectOption(new SelectOption().setIndex(2));
-                    System.out.println("✅ Selected Subcategory");
+                    
+                    page.locator("#mySelect").selectOption(new SelectOption().setValue(String.valueOf(totalQuestions)));
 
-                    Locator numSelect = page.locator("#mySelect, select[name*='questions']").first();
-                    numSelect.selectOption(new SelectOption().setValue(String.valueOf(totalQuestions)));
-                    System.out.println("✅ Selected Question Count");
+                    // --- STEP 3: SELECT LEVEL & LAUNCH ---
+                    // Using direct JavaScript click because buttons in modals are often 'unclickable' by standard Playwright on Linux
+                    page.evaluate("() => { " +
+                        "document.querySelector(\"a[onclick*='selectLevel']\").click(); " +
+                        "setTimeout(() => { document.querySelector(\"button:has-text('START'), #startBtn\").click(); }, 1000);" +
+                        "}");
+                    
+                    System.out.println("🚀 Quiz Launched via JS execution.");
 
-                    // --- resilient LEVEL & START ---
-                    Locator advancedBtn = page.locator("//a[contains(@onclick,\"selectLevel('advanced')\")]").first();
-                    smartInteract(advancedBtn, "Advanced Level Button");
-
-                    Locator finalStartBtn = page.locator("//button[contains(text(),'START')]").first();
-                    smartInteract(finalStartBtn, "Final START Button");
-
-                    // --- 3. QUESTION LOOP ---
+                    // --- STEP 4: QUESTION LOOP ---
                     int currentQuestion = 1;
                     while (currentQuestion <= totalQuestions) {
                         try {
                             FrameLocator quizFrame = page.frameLocator("#iframeId");
-                            // Wait for frame content
-                            quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(15000));
-                            
+                            quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(20000));
                             processQuestion(quizFrame, page, ai, currentQuestion);
                             currentQuestion++;
                         } catch (Exception e) {
-                            System.err.println("⚠️ Q" + currentQuestion + " Error: " + e.getMessage());
+                            System.err.println("⚠️ Q" + currentQuestion + " Error. Reloading...");
                             page.reload(); 
                             break; 
                         }
