@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
-public class DoQuizGithubCI {
+public class DoQuizTest {
 
   @Test
   public void runQuizOnGithub() {
