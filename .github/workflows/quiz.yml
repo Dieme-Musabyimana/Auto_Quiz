@@ -18,17 +18,14 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers
-        working-directory: ./Auto_Quiz     # Move into folder before running
         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
 
       - name: Run Bot
-        working-directory: ./Auto_Quiz     # Move into folder before running
         env:
           QUIZ_LINK: ${{ secrets.QUIZ_LINK }}
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
-        # Make sure your file is renamed to DoQuizTest.java inside src/test/java/
         run: mvn test -Dtest=DoQuizTest
 
       - name: Commit and Push Progress
