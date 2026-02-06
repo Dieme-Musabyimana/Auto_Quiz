@@ -18,7 +18,7 @@ jobs:
           cache: maven
 
       - name: Install Playwright Browsers
-        # Removed the extra sub-folder path
+        # Running directly from root where pom.xml is visible
         run: mvn exec:java -e -Dexec.mainClass="com.microsoft.playwright.CLI" -Dexec.args="install chromium"
 
       - name: Run Bot
@@ -27,7 +27,7 @@ jobs:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
-        # Removed the extra sub-folder path
+        # Maven will automatically find DoQuizTest.java in src/test/java
         run: mvn test -Dtest=DoQuizTest
 
       - name: Commit and Push Progress
@@ -35,11 +35,9 @@ jobs:
           git config --global user.name "QuizBot"
           git config --global user.email "bot@github.com"
           
-          # Check for the file in the root first
+          # Since statistics.json is at the root (see image_82ea20.png)
           if [ -f "statistics.json" ]; then 
             git add statistics.json
-          elif [ -f "Auto_Quiz/statistics.json" ]; then
-            git add Auto_Quiz/statistics.json
           fi
           
           if git diff --staged --quiet; then
