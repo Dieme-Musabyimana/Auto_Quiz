@@ -41,7 +41,7 @@ jobs:
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
         run: |
           echo "🟢 Starting Quiz Bot..."
-          mvn compile exec:java -Dexec.mainClass="doQuiz"
+          mvn compile exec:java -Dexec.mainClass="DoQuiz"
 
       # 5️⃣ Upload statistics.json and state.json as artifacts for debugging
       - name: Upload Debug Artifacts
