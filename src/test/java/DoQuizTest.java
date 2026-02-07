@@ -126,53 +126,31 @@ public class DoQuizTest {
 
                                 processQuestion(quizFrame, page, ai, currentQuestion, questionStartTime);
                                 success = true;
+                                currentQuestion++;
 
                                 // <<<<<<<<<<<<<<<<<<<<<<<<<Skip functionality>>>>>>>>>>>>>>>
-                                skipCount = 0; // reset skip counter after a successful question
+                                skipCount = 0;
                                 // <<<<<<<<<<<<<<<<<<<<<<<<end of functionality>>>>>>>>>>>>>>>
-
-                                currentQuestion++;
 
                             } catch (Exception e) {
                                 System.err.println(
                                         "⚠️ Retry Q" + currentQuestion +
                                                 " attempt " + attempt + " | " + e.getMessage()
                                 );
-                                page.waitForTimeout(3000);
+                                humanWait(page, 1000, 1500);
                             }
                         }
 
                         if (!success) {
                             System.err.println("❌ Q" + currentQuestion + " skipped after retries.");
+                            currentQuestion++;
 
                             // <<<<<<<<<<<<<<<<<<<<<<<<<Skip functionality>>>>>>>>>>>>>>>
                             skipCount++;
                             if (skipCount >= 5) {
                                 System.err.println("🚨 5 consecutive skips detected → Restarting quiz");
-
-                                // reset skip counter
-                                skipCount = 0;
-
-                                // reset question counter
-                                currentQuestion = 1;
-
-                                // restart quiz properly
                                 hardRestart(page);
-
-                                // re-select quiz options
-                                page.locator("#subcategory-3").waitFor();
-                                page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
-                                page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
-                                page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
-                                page.click("//button[contains(text(),'START')]");
-
-                                // re-initialize quiz frame
-                                quizFrame = page.frameLocator("#iframeId");
-
-                                // continue from question 1
-                                continue;
-                            } else {
-                                currentQuestion++; // move to next question if skipCount < 5
+                                break;
                             }
                             // <<<<<<<<<<<<<<<<<<<<<<<<end of functionality>>>>>>>>>>>>>>>
                         }
@@ -254,16 +232,38 @@ public class DoQuizTest {
 
         String finalChoice = options.get(random.nextInt(options.size()));
 
-        quizFrame.locator(".opt")
-                .filter(new Locator.FilterOptions().setHasText(finalChoice))
-                .first()
-                .click();
+        // <<<<<<<<<<<<<<<<<<<<<<<<<Added Stable Wait & Retry>>>>>>>>>>>>>>>
+        quizFrame.locator(".opt .txt").first()
+                .waitFor(new Locator.WaitForOptions()
+                        .setTimeout(10000)
+                        .setState(WaitForSelectorState.VISIBLE));
+        humanWait(page, 300, 700);
 
-        quizFrame.locator("button:has-text('Submit'), #submitBtn")
-                .first()
-                .click();
+        boolean clicked = false;
+        int clickAttempt = 0;
+        while (!clicked && clickAttempt < 3) {
+            try {
+                quizFrame.locator(".opt")
+                        .filter(new Locator.FilterOptions().setHasText(finalChoice))
+                        .first()
+                        .click();
+                clicked = true;
+            } catch (PlaywrightException ex) {
+                humanWait(page, 200, 500);
+                clickAttempt++;
+            }
+        }
+
+        Locator submitBtn = quizFrame.locator("button:has-text('Submit'), #submitBtn").first();
+        submitBtn.waitFor(new Locator.WaitForOptions()
+                .setTimeout(5000)
+                .setState(WaitForSelectorState.VISIBLE));
+        submitBtn.click();
+        humanWait(page, 200, 500);
+        // <<<<<<<<<<<<<<<<<<<<<<<<end of Stable Wait & Retry>>>>>>>>>>>>>>>
     }
 }
+
 
 
 
