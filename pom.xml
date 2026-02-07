@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.example</groupId>
@@ -54,18 +55,18 @@
                 <version>3.13.0</version>
             </plugin>
 
-            <!-- Exec plugin for running DoQuizTest -->
+            <!-- Exec plugin to run DoQuizTest in src/test/java -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <configuration>
-                    <mainClass>DoQuizTest</mainClass>
-                    <includeTestClasspath>true</includeTestClasspath>
+                    <mainClass>DoQuizTest</mainClass> <!-- your test class -->
+                    <classpathScope>test</classpathScope> <!-- include test classes -->
                 </configuration>
             </plugin>
 
-            <!-- Surefire plugin for tests -->
+            <!-- Surefire plugin (optional, for JUnit tests) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
