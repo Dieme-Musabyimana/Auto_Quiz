@@ -23,7 +23,7 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '21'
           distribution: 'microsoft'
           cache: maven
 
@@ -41,7 +41,7 @@ jobs:
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
         run: |
           echo "🟢 Starting Quiz Bot..."
-          mvn compile exec:java -Dexec.mainClass="DoQuizTest"
+          mvn compile exec:java -Dexec.mainClass="doQuiz"
 
       # 5️⃣ Upload statistics.json and state.json as artifacts for debugging
       - name: Upload Debug Artifacts
