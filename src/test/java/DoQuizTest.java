@@ -181,7 +181,7 @@ public class DoQuizTest {
         }
     }
 
-    // ==================== Login, processQuestion, humanWait, saveData, loadData remain unchanged ====================
+    // ==================== Login Method ====================
     private static Page loginIfNeeded(Page page, BrowserContext context) {
         try {
             Locator phoneInput = page.locator("input[placeholder*='Phone']");
@@ -201,11 +201,13 @@ public class DoQuizTest {
         return page;
     }
 
+    // ==================== Human Wait ====================
     private static void humanWait(Page page, int min, int max) {
         int delay = random.nextInt(max - min + 1) + min;
         page.waitForTimeout(delay);
     }
 
+    // ==================== Save Data ====================
     private static void saveData() {
         try (Writer writer = new FileWriter(DATA_FILE)) {
             Map<String, Object> data = new HashMap<>();
@@ -215,6 +217,7 @@ public class DoQuizTest {
         } catch (IOException ignored) {}
     }
 
+    // ==================== Load Data ====================
     private static void loadData() {
         try {
             File file = new File(DATA_FILE);
@@ -236,4 +239,128 @@ public class DoQuizTest {
             }
         } catch (Exception ignored) {}
     }
+
+    // ==================== processQuestion METHOD (MISSING) ====================
+    private static void processQuestion(
+            FrameLocator quizFrame,
+            Page page,
+            GroqService ai,
+            int i,
+            long questionStartTime
+    ) throws Exception {
+
+        int cycles = 0;
+        String qText = "";
+
+        while (cycles < QUESTION_TIMEOUT_MS / 200) {
+            try {
+                qText = quizFrame.locator("#qTitle").innerText().trim();
+                if (!qText.isEmpty()
+                        && !qText.contains("Loading")
+                        && !qText.equals(lastProcessedQuestion)) break;
+            } catch (Exception ignored) {}
+
+            page.waitForTimeout(200);
+            cycles++;
+
+            if (System.currentTimeMillis() - questionStartTime > 10_000) {
+                Locator retryBtn = quizFrame.locator("#retryBtn");
+                if (retryBtn.isVisible()) {
+                    retryBtn.click();
+                    System.out.println("⏱️ >10s before submit → Retry clicked");
+                }
+                throw new Exception("Submit exceeded 10 seconds");
+            }
+        }
+
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion))
+            throw new Exception("Question not loaded properly");
+
+        lastProcessedQuestion = qText;
+
+        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+        options.removeIf(String::isEmpty);
+
+        if (options.isEmpty())
+            throw new Exception("No answer options loaded");
+
+        String finalChoice;
+
+        if (masterDatabase.containsKey(qText)) {
+            finalChoice = masterDatabase.get(qText);
+            System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
+        } else {
+
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("Question: ").append(qText).append("\nOptions:\n");
+
+            for (int idx = 0; idx < options.size(); idx++) {
+                promptBuilder.append(idx + 1).append(") ")
+                        .append(options.get(idx)).append("\n");
+            }
+
+            promptBuilder.append(
+                    "Respond with the exact NUMBER of the correct option only."
+            );
+
+            String aiResponse = ai.askAI(promptBuilder.toString())
+                    .replaceAll("[^0-9]", "")
+                    .trim();
+
+            int choiceIndex;
+
+            try {
+                int number = Integer.parseInt(aiResponse);
+                if (number >= 1 && number <= options.size()) {
+                    choiceIndex = number - 1;
+                } else {
+                    choiceIndex = random.nextInt(options.size());
+                }
+            } catch (Exception e) {
+                choiceIndex = random.nextInt(options.size());
+            }
+
+            finalChoice = options.get(choiceIndex);
+
+            System.out.println(
+                    "📝 Q" + i + " [AI] Chose option " +
+                            (choiceIndex + 1) + ": " + finalChoice
+            );
+        }
+
+        Locator answerLocator = quizFrame.locator(".opt")
+                .filter(new Locator.FilterOptions().setHasText(finalChoice))
+                .first();
+
+        answerLocator.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+        answerLocator.click();
+
+        humanWait(page, 500, 1000);
+
+        Locator submitBtn = quizFrame
+                .locator("button:has-text('Submit'), #submitBtn")
+                .first();
+
+        submitBtn.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+        submitBtn.click();
+
+        page.waitForTimeout(500);
+
+        try {
+            String resultText = quizFrame.locator("#lastBody").innerText();
+            if (resultText.contains("Correct:")) {
+                String correctLetter =
+                        resultText.split("Correct:")[1].trim().substring(0, 1);
+                int correctIndex = correctLetter.charAt(0) - 'A';
+                if (correctIndex >= 0 && correctIndex < options.size()) {
+                    String actualAns = options.get(correctIndex);
+                    masterDatabase.put(qText, actualAns);
+                    if (finalChoice.equalsIgnoreCase(actualAns))
+                        totalMarksGained++;
+                    saveData();
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
 }
