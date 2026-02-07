@@ -1,39 +1,38 @@
 name: Run Quiz Bot
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
-
-permissions:
-  contents: write
+  schedule:
+    - cron: "0 12 * * *"  # every day at 12:00 UTC
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
 
     steps:
-      # 1️⃣ Checkout the repository
-      - name: Checkout Repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      # 2️⃣ Set up JDK 21
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
-          java-version: '21'
-          distribution: 'microsoft'
-          cache: maven
+          distribution: temurin
+          java-version: 21
 
-      # 3️⃣ Install Playwright Browsers and dependencies
-      - name: Install Playwright Browsers & Dependencies
-        run: |
-          mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install-deps"
-          mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install chromium"
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      # 4️⃣ Run the Quiz Bot
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Build Project
+        run: mvn clean test-compile
+
       - name: Run Bot
         env:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
@@ -41,16 +40,4 @@ jobs:
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
           API_KEY: ${{ secrets.API_KEY }}
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
-        run: |
-          echo "🟢 Starting Quiz Bot..."
-          mvn compile exec:java -Dexec.mainClass=DoQuizTest -Dexec.includeTestClasspath=true
-
-      # 5️⃣ Upload statistics.json and state.json as artifacts
-      - name: Upload Debug Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: bot-debug
-          path: |
-            statistics.json
-            state.json
+        run: mvn exec:java
