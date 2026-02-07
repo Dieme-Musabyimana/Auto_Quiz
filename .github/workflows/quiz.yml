@@ -15,9 +15,11 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      # 1️⃣ Checkout the repository
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      # 2️⃣ Set up JDK 21
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -25,15 +27,13 @@ jobs:
           distribution: 'microsoft'
           cache: maven
 
-      # Install Linux dependencies first
-      - name: Install Playwright Linux Dependencies
-        run: sudo mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install-deps"
+      # 3️⃣ Install Playwright Browsers and dependencies
+      - name: Install Playwright Browsers & Dependencies
+        run: |
+          mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install-deps"
+          mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install chromium"
 
-      # Install Playwright browsers
-      - name: Install Playwright Browsers
-        run: mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install"
-
-      # Run your bot (correct class name)
+      # 4️⃣ Run the Quiz Bot
       - name: Run Bot
         env:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
@@ -43,8 +43,9 @@ jobs:
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
         run: |
           echo "🟢 Starting Quiz Bot..."
-          mvn compile exec:java -Dexec.mainClass=DoQuizTest
+          mvn compile exec:java -Dexec.mainClass=DoQuizTest -Dexec.includeTestClasspath=true
 
+      # 5️⃣ Upload statistics.json and state.json as artifacts
       - name: Upload Debug Artifacts
         if: always()
         uses: actions/upload-artifact@v4
