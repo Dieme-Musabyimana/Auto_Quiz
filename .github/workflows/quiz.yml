@@ -30,10 +30,10 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Build Project
+      - name: Compile tests
         run: mvn clean test-compile
 
-      - name: Run Bot
+      - name: Run Quiz Bot
         env:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
