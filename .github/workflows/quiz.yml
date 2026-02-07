@@ -27,15 +27,11 @@ jobs:
 
       # Install Linux dependencies first
       - name: Install Playwright Linux Dependencies
-        run: sudo mvn -DskipTests exec:java \
-              -Dexec.mainClass=com.microsoft.playwright.CLI \
-              -Dexec.args="install-deps"
+        run: sudo mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install-deps"
 
       # Install Playwright browsers
       - name: Install Playwright Browsers
-        run: mvn -DskipTests exec:java \
-              -Dexec.mainClass=com.microsoft.playwright.CLI \
-              -Dexec.args="install"
+        run: mvn -DskipTests exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install"
 
       # Run your bot (correct class name)
       - name: Run Bot
