@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class DoQuiz {
+public class DoQuizTest {
 
     private static String lastProcessedQuestion = "";
     private static Map<String, String> masterDatabase = new HashMap<>();
