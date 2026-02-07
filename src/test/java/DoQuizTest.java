@@ -18,7 +18,8 @@ public class DoQuizTest {
     private static int totalMarksGained = 0;
     private static final Random random = new Random();
     private static final int MAX_RETRIES = 2;
-    private static final int QUESTION_TIMEOUT_MS = 10000;
+    private static final int QUESTION_TIMEOUT_MS = 30000; // <<<<<<<<<<<<<<<<<<<<<<<<< Increased timeout >>>>>>>>>>>>>>>>>>>>>>>>>
+
 
     // ==================== HARD RESTART FUNCTION ====================
     private static void hardRestart(Page page) {
@@ -116,18 +117,29 @@ public class DoQuizTest {
 
                         boolean success = false;
                         int attempt = 0;
-                        long questionStartTime = System.currentTimeMillis();
 
+                        // <<<<<<<<<<<<<<<<<<<<<<<<<Question retry loop with full waits>>>>>>>>>>>>>>>
                         while (!success && attempt < MAX_RETRIES) {
                             attempt++;
                             try {
+                                // Wait for iframe content and question title
                                 quizFrame.locator("#qTitle")
-                                        .waitFor(new Locator.WaitForOptions().setTimeout(5000));
+                                        .waitFor(new Locator.WaitForOptions().setTimeout(QUESTION_TIMEOUT_MS));
 
-                                processQuestion(quizFrame, page, ai, currentQuestion, questionStartTime);
+                                // Wait for options to be visible
+                                List<Locator> options = quizFrame.locator(".opt").all();
+                                boolean optionsReady = false;
+                                long start = System.currentTimeMillis();
+                                while (!optionsReady && System.currentTimeMillis() - start < QUESTION_TIMEOUT_MS) {
+                                    optionsReady = options.stream().allMatch(Locator::isVisible);
+                                    if (!optionsReady) Thread.sleep(500);
+                                }
+
+                                processQuestion(quizFrame, page, ai, currentQuestion);
                                 success = true;
                                 currentQuestion++;
 
+                                // Reset skip count on successful question
                                 // <<<<<<<<<<<<<<<<<<<<<<<<<Skip functionality>>>>>>>>>>>>>>>
                                 skipCount = 0;
                                 // <<<<<<<<<<<<<<<<<<<<<<<<end of functionality>>>>>>>>>>>>>>>
@@ -137,10 +149,10 @@ public class DoQuizTest {
                                         "⚠️ Retry Q" + currentQuestion +
                                                 " attempt " + attempt + " | " + e.getMessage()
                                 );
-                                humanWait(page, 1000, 1500);
+                                page.waitForTimeout(2000);
                             }
                         }
-
+                        // If question failed after all retries
                         if (!success) {
                             System.err.println("❌ Q" + currentQuestion + " skipped after retries.");
                             currentQuestion++;
@@ -220,8 +232,7 @@ public class DoQuizTest {
             FrameLocator quizFrame,
             Page page,
             GroqService ai,
-            int i,
-            long questionStartTime
+            int i
     ) throws Exception {
 
         String qText = quizFrame.locator("#qTitle").innerText().trim();
@@ -230,40 +241,30 @@ public class DoQuizTest {
         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
         options.removeIf(String::isEmpty);
 
+        // Random choice for now
         String finalChoice = options.get(random.nextInt(options.size()));
 
-        // <<<<<<<<<<<<<<<<<<<<<<<<<Added Stable Wait & Retry>>>>>>>>>>>>>>>
-        quizFrame.locator(".opt .txt").first()
-                .waitFor(new Locator.WaitForOptions()
-                        .setTimeout(10000)
-                        .setState(WaitForSelectorState.VISIBLE));
-        humanWait(page, 300, 700);
+        // <<<<<<<<<<<<<<<<<<<<<<<<<Click with stability check>>>>>>>>>>>>>>>
+        Locator optionLocator = quizFrame.locator(".opt")
+                .filter(new Locator.FilterOptions().setHasText(finalChoice))
+                .first();
 
         boolean clicked = false;
-        int clickAttempt = 0;
-        while (!clicked && clickAttempt < 3) {
+        long startTime = System.currentTimeMillis();
+        while (!clicked && System.currentTimeMillis() - startTime < QUESTION_TIMEOUT_MS) {
             try {
-                quizFrame.locator(".opt")
-                        .filter(new Locator.FilterOptions().setHasText(finalChoice))
-                        .first()
-                        .click();
+                optionLocator.scrollIntoViewIfNeeded();
+                optionLocator.click();
                 clicked = true;
-            } catch (PlaywrightException ex) {
-                humanWait(page, 200, 500);
-                clickAttempt++;
+            } catch (PlaywrightException e) {
+                Thread.sleep(500);
             }
         }
 
-        Locator submitBtn = quizFrame.locator("button:has-text('Submit'), #submitBtn").first();
-        submitBtn.waitFor(new Locator.WaitForOptions()
-                .setTimeout(5000)
-                .setState(WaitForSelectorState.VISIBLE));
-        submitBtn.click();
-        humanWait(page, 200, 500);
-        // <<<<<<<<<<<<<<<<<<<<<<<<end of Stable Wait & Retry>>>>>>>>>>>>>>>
+        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+        // <<<<<<<<<<<<<<<<<<<<<<<<end of stability check>>>>>>>>>>>>>>>
     }
 }
-
 
 
 
