@@ -19,7 +19,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up JDK 21 (compatible with your code)
+      # 2️⃣ Set up JDK 21
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -27,9 +27,12 @@ jobs:
           distribution: 'microsoft'
           cache: maven
 
-      # 3️⃣ Install Playwright browsers
+      # 3️⃣ Install Playwright Browsers (✅ CORRECT WAY)
       - name: Install Playwright Browsers
-        run: mvn com.microsoft.playwright:playwright-cli:1.49.0:install
+        run: |
+          mvn -q -DskipTests exec:java \
+            -Dexec.mainClass=com.microsoft.playwright.CLI \
+            -Dexec.args="install chromium"
 
       # 4️⃣ Run the Quiz Bot
       - name: Run Bot
@@ -41,9 +44,9 @@ jobs:
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
         run: |
           echo "🟢 Starting Quiz Bot..."
-          mvn compile exec:java -Dexec.mainClass="doQuiz"
+          mvn compile exec:java -Dexec.mainClass=doQuiz
 
-      # 5️⃣ Upload statistics.json and state.json as artifacts for debugging
+      # 5️⃣ Upload statistics.json and state.json as artifacts
       - name: Upload Debug Artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,5 +55,3 @@ jobs:
           path: |
             statistics.json
             state.json
-
-      # 6️⃣ Optional: notify on failure (Slack, email, etc.) if needed
