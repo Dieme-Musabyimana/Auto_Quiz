@@ -15,11 +15,11 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      # 1️⃣ Checkout repository
+      # 1️⃣ Checkout the repository
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      # 2️⃣ Set up Java 21
+      # 2️⃣ Set up JDK 21
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -27,18 +27,20 @@ jobs:
           distribution: 'microsoft'
           cache: maven
 
-      # 3️⃣ Install Playwright system dependencies + Chromium (✅ CORRECT)
+      # 3️⃣ Install Playwright system dependencies + browsers
       - name: Install Playwright Browsers & Deps
         run: |
+          # Install Linux system dependencies required by browsers
           sudo mvn -DskipTests exec:java \
             -Dexec.mainClass=com.microsoft.playwright.CLI \
             -Dexec.args="install-deps"
-
+          
+          # Install all Playwright browsers (Chromium, Firefox, WebKit)
           mvn -DskipTests exec:java \
             -Dexec.mainClass=com.microsoft.playwright.CLI \
-            -Dexec.args="install chromium"
+            -Dexec.args="install"
 
-      # 4️⃣ Run the Quiz Bot (NO logic change)
+      # 4️⃣ Run the Quiz Bot
       - name: Run Bot
         env:
           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
@@ -50,7 +52,7 @@ jobs:
           echo "🟢 Starting Quiz Bot..."
           mvn compile exec:java -Dexec.mainClass=doQuiz
 
-      # 5️⃣ Upload progress files (optional but useful)
+      # 5️⃣ Upload statistics.json and state.json as artifacts for debugging
       - name: Upload Debug Artifacts
         if: always()
         uses: actions/upload-artifact@v4
