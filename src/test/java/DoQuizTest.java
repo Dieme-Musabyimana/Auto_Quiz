@@ -126,11 +126,12 @@ public class DoQuizTest {
 
                                 processQuestion(quizFrame, page, ai, currentQuestion, questionStartTime);
                                 success = true;
-                                currentQuestion++;
 
                                 // <<<<<<<<<<<<<<<<<<<<<<<<<Skip functionality>>>>>>>>>>>>>>>
-                                skipCount = 0;
+                                skipCount = 0; // reset skip counter after a successful question
                                 // <<<<<<<<<<<<<<<<<<<<<<<<end of functionality>>>>>>>>>>>>>>>
+
+                                currentQuestion++;
 
                             } catch (Exception e) {
                                 System.err.println(
@@ -143,14 +144,35 @@ public class DoQuizTest {
 
                         if (!success) {
                             System.err.println("❌ Q" + currentQuestion + " skipped after retries.");
-                            currentQuestion++;
 
                             // <<<<<<<<<<<<<<<<<<<<<<<<<Skip functionality>>>>>>>>>>>>>>>
                             skipCount++;
                             if (skipCount >= 5) {
                                 System.err.println("🚨 5 consecutive skips detected → Restarting quiz");
+
+                                // reset skip counter
+                                skipCount = 0;
+
+                                // reset question counter
+                                currentQuestion = 1;
+
+                                // restart quiz properly
                                 hardRestart(page);
-                                break;
+
+                                // re-select quiz options
+                                page.locator("#subcategory-3").waitFor();
+                                page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+                                page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
+                                page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
+                                page.click("//button[contains(text(),'START')]");
+
+                                // re-initialize quiz frame
+                                quizFrame = page.frameLocator("#iframeId");
+
+                                // continue from question 1
+                                continue;
+                            } else {
+                                currentQuestion++; // move to next question if skipCount < 5
                             }
                             // <<<<<<<<<<<<<<<<<<<<<<<<end of functionality>>>>>>>>>>>>>>>
                         }
@@ -242,7 +264,6 @@ public class DoQuizTest {
                 .click();
     }
 }
-
 
 
 
