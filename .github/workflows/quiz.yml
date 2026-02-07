@@ -28,15 +28,14 @@ jobs:
           cache: maven
 
       # 3️⃣ Install Playwright Browsers (✅ CORRECT WAY)
-     - name: Install Playwright Browsers
-  run: |
-    mvn -DskipTests exec:java \
-      -Dexec.mainClass=com.microsoft.playwright.CLI \
-      -Dexec.args=install
-    mvn -DskipTests exec:java \
-      -Dexec.mainClass=com.microsoft.playwright.CLI \
-      -Dexec.args=chromium
-
+      - name: Install Playwright Browsers
+        run: |
+          mvn -DskipTests exec:java \
+            -Dexec.mainClass=com.microsoft.playwright.CLI \
+            -Dexec.args=install
+          mvn -DskipTests exec:java \
+            -Dexec.mainClass=com.microsoft.playwright.CLI \
+            -Dexec.args=chromium
 
       # 4️⃣ Run the Quiz Bot
       - name: Run Bot
