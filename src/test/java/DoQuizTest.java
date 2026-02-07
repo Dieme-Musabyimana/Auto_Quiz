@@ -33,7 +33,7 @@ public class DoQuiz {
     public static void main(String[] args) {
 
         loadData();
-        int totalQuestions = 97;
+        int totalQuestions = 90;
 
         try (Playwright playwright = Playwright.create()) {
 
