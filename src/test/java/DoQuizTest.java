@@ -13,7 +13,6 @@ import java.util.*;
 
 public class DoQuizTest {
 
-    // ==================== FIELDS ====================
     private static String lastProcessedQuestion = "";
     private static Map<String, String> masterDatabase = new HashMap<>();
     private static final String DATA_FILE = "statistics.json";
@@ -22,19 +21,19 @@ public class DoQuizTest {
     private static final int MAX_RETRIES = 2;
     private static final int QUESTION_TIMEOUT_MS = 10000;
 
-    // ==================== MAIN METHOD ====================
     public static void main(String[] args) throws IOException {
 
         loadData();
         int totalQuestions = 90;
 
         // ------------------ MULTI-ACCOUNT SUPPORT ------------------
-        // Get profile name from arguments; default to "acc_default"
+        // Get profile name from args; default to "acc_default"
         String profileName = args.length > 0 ? args[0] : "acc_default";
-        Path userDataDir = Paths.get("profiles", profileName); // Each account gets its own folder
+        Path userDataDir = Paths.get("profiles", profileName);
 
-        // Ensure profile folder exists
+        // Create unique folder per account
         if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
+        System.out.println("👤 Using profile: " + profileName + " → folder: " + userDataDir.toAbsolutePath());
         // ------------------------------------------------------------
 
         try (Playwright playwright = Playwright.create()) {
@@ -57,9 +56,8 @@ public class DoQuizTest {
                             .setViewportSize(1920, 800)
                             .setSlowMo(0);
 
-            // ------------------ LOAD PERSISTENT CONTEXT PER ACCOUNT ------------------
             BrowserContext context =
-                    playwright.chromium().launchPersistentContext(userDataDir, options); // Uses separate folder per account
+                    playwright.chromium().launchPersistentContext(userDataDir, options);
 
             context.addInitScript(
                     "() => {" +
@@ -73,27 +71,22 @@ public class DoQuizTest {
             Page page = context.pages().get(0);
             GroqService ai = new GroqService();
 
-            // ==================== SAFETY MEASURE START ====================
+            System.out.println("✅ Initialization done for account: " + profileName);
+
+            // ==================== SAFETY LOOP START ====================
             while (true) {
                 try {
-
                     System.out.println(
                             "\n📊 [" + new Date() + "] STATS | MARKS: " +
                                     totalMarksGained + " | MEMORY: " + masterDatabase.size()
                     );
 
-                    page = loginIfNeeded(page, context);
+                    page = loginIfNeeded(page, context, profileName);
 
-                    try {
-                        page.navigate(
-                                "https://www.iwacusoft.com/ubumenyibwanjye/index",
-                                new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                        );
-                    } catch (Exception e) {
-                        System.err.println("❌ Navigation failed: " + e.getMessage());
-                        hardRestart(page);
-                        continue;
-                    }
+                    page.navigate(
+                            "https://www.iwacusoft.com/ubumenyibwanjye/index",
+                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                    );
 
                     Locator startBtn;
                     try {
@@ -106,7 +99,7 @@ public class DoQuizTest {
                         continue;
                     }
 
-                    // ==================== Keep your logic intact ====================
+                    // ==================== Keep existing quiz logic intact ====================
                     page.locator("#subcategory-3").waitFor();
                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
@@ -117,7 +110,6 @@ public class DoQuizTest {
                     int currentQuestion = 1;
 
                     while (currentQuestion <= totalQuestions) {
-
                         boolean success = false;
                         int attempt = 0;
                         long questionStartTime = System.currentTimeMillis();
@@ -167,13 +159,45 @@ public class DoQuizTest {
 
                 humanWait(page, 2000, 3500);
             }
-            // ==================== SAFETY MEASURE END ====================
+            // ==================== SAFETY LOOP END ====================
         } catch (Exception e) {
             System.err.println("❌ Playwright initialization failed: " + e.getMessage());
         }
     }
 
-    // ==================== HARD RESTART FUNCTION ====================
+    // ==================== LOGIN METHOD ====================
+    private static Page loginIfNeeded(Page page, BrowserContext context, String profileName) {
+        try {
+            Locator phoneInput = page.locator("input[placeholder*='Phone']");
+            if (phoneInput.isVisible()) {
+                // 🔒 Use environment variable for the correct account
+                String phoneEnv = System.getenv("LOGIN_PHONE");
+                String pinEnv = System.getenv("LOGIN_PIN");
+
+                if (phoneEnv == null || pinEnv == null || phoneEnv.isEmpty() || pinEnv.isEmpty()) {
+                    System.out.println("⚠️ No LOGIN_PHONE / LOGIN_PIN provided for account " + profileName + ". Skipping login.");
+                    return page;
+                }
+
+                phoneInput.fill(phoneEnv);
+                page.locator("input[placeholder*='PIN']").fill(pinEnv);
+                page.click("//button[contains(., 'Log in')]");
+                page.waitForURL("**/index",
+                        new Page.WaitForURLOptions().setTimeout(10000));
+
+                context.storageState(
+                        new BrowserContext.StorageStateOptions()
+                                .setPath(Paths.get("state_" + profileName + ".json"))
+                );
+                System.out.println("✅ Login successful for account: " + profileName);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Login failed for account: " + profileName + " | " + e.getMessage());
+        }
+        return page;
+    }
+
+    // ==================== HARD RESTART ====================
     private static void hardRestart(Page page) {
         lastProcessedQuestion = "";
         System.out.println("🔁 Restarting quiz from beginning...");
@@ -187,33 +211,13 @@ public class DoQuizTest {
         }
     }
 
-    // ==================== LOGIN METHOD ====================
-    private static Page loginIfNeeded(Page page, BrowserContext context) {
-        try {
-            Locator phoneInput = page.locator("input[placeholder*='Phone']");
-            if (phoneInput.isVisible()) {
-                phoneInput.fill("0786862261");
-                page.locator("input[placeholder*='PIN']").fill("12345");
-                page.click("//button[contains(., 'Log in')]");
-                page.waitForURL("**/index",
-                        new Page.WaitForURLOptions().setTimeout(10000));
-                context.storageState(
-                        new BrowserContext.StorageStateOptions()
-                                .setPath(Paths.get("state.json"))
-                );
-                System.out.println("✅ Auto-login successful");
-            }
-        } catch (Exception ignored) {}
-        return page;
-    }
-
     // ==================== HUMAN WAIT ====================
     private static void humanWait(Page page, int min, int max) {
         int delay = random.nextInt(max - min + 1) + min;
         page.waitForTimeout(delay);
     }
 
-    // ==================== SAVE DATA ====================
+    // ==================== SAVE & LOAD DATA ====================
     private static void saveData() {
         try (Writer writer = new FileWriter(DATA_FILE)) {
             Map<String, Object> data = new HashMap<>();
@@ -223,7 +227,6 @@ public class DoQuizTest {
         } catch (IOException ignored) {}
     }
 
-    // ==================== LOAD DATA ====================
     private static void loadData() {
         try {
             File file = new File(DATA_FILE);
@@ -368,7 +371,6 @@ public class DoQuizTest {
             }
         } catch (Exception ignored) {}
     }
-
 }
 
 
