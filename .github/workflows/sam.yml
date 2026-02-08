@@ -1,4 +1,4 @@
-name: Run Quiz Bot - BEL
+name: Bot - SAM
 
 on:
   workflow_dispatch: # Allows manual start from the Actions tab
@@ -27,7 +27,7 @@ jobs:
 
       - name: Run Quiz Bot
         env:
-          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE_BEL }} # 1. Change this for other accounts
+          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE_SAM }} # 1. Change this for other accounts
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
           API_KEY: ${{ secrets.API_KEY }}
         # 2. Change the argument at the end for other accounts
