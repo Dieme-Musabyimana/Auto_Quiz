@@ -27,8 +27,12 @@ on:
         description: 'Run Account PAT'
         type: boolean
         default: false
-  schedule:
-    - cron: "0 12 * * *"
+      run_sam:
+        description: 'Run Account SAM'
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: "0 12 * * *"
 
 jobs:
   run-bot:
@@ -50,6 +54,8 @@ jobs:
             id: run_dieu
           - account: PAT
             id: run_pat
+          - account: SAM
+            id: run_sam
           
 
     steps:
@@ -90,6 +96,8 @@ jobs:
             DI)   echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV ;;
             DIEU) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV ;;
             PAT)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV ;;
+            SAM)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV ;;
+
            
           esac
           echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
