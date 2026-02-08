@@ -1,4 +1,4 @@
-name: Run Quiz Bot
+name: Run Quiz Bot Multiple Accounts
 
 on:
   workflow_dispatch:
@@ -8,7 +8,9 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        account: [acc_1, acc_2, acc_3] # ✅ Add as many profiles/accounts as you want
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -40,4 +42,50 @@ jobs:
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
           API_KEY: ${{ secrets.API_KEY }}
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
-        run: mvn exec:java
+        run: mvn exec:java -Dexec.args="${{ matrix.account }}" # ✅ Pass the profile name
+
+
+
+# name: Run Quiz Bot
+
+# on:
+#   workflow_dispatch:
+#   schedule:
+#     - cron: "0 12 * * *"  # every day at 12:00 UTC
+
+# jobs:
+#   run-bot:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+
+#       - name: Set up Java
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: temurin
+#           java-version: 21
+
+#       - name: Cache Maven dependencies
+#         uses: actions/cache@v3
+#         with:
+#           path: ~/.m2/repository
+#           key: ${{ runner.os }}-maven-${{ hashFiles('pom.xml') }}
+#           restore-keys: |
+#             ${{ runner.os }}-maven-
+
+#       - name: Install Playwright browsers
+#         run: npx playwright install --with-deps
+
+#       - name: Compile tests
+#         run: mvn clean test-compile
+
+#       - name: Run Quiz Bot
+#         env:
+#           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
+#           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
+#           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+#           API_KEY: ${{ secrets.API_KEY }}
+#           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
+#         run: mvn exec:java
