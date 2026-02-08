@@ -1,263 +1,263 @@
-import com.microsoft.playwright.*;
-import com.microsoft.playwright.options.*;
-import page.GroqService;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+// import com.microsoft.playwright.*;
+// import com.microsoft.playwright.options.*;
+// import page.GroqService;
+// import com.google.gson.Gson;
+// import com.google.gson.reflect.TypeToken;
 
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
+// import java.io.*;
+// import java.nio.file.*;
+// import java.util.*;
 
-public class DoQuizTest {
+// public class DoQuizTest {
 
-    private static String lastProcessedQuestion = "";
-    private static Map<String, String> masterDatabase = new HashMap<>();
-    private static final String DATA_FILE = "statistics.json";
-    private static int totalMarksGained = 0;
-    private static final Random random = new Random();
-    private static int roundsCompleted = 0; // 🔄 Tracks round number in console
+//     private static String lastProcessedQuestion = "";
+//     private static Map<String, String> masterDatabase = new HashMap<>();
+//     private static final String DATA_FILE = "statistics.json";
+//     private static int totalMarksGained = 0;
+//     private static final Random random = new Random();
+//     private static int roundsCompleted = 0; // 🔄 Tracks round number in console
 
-    public static void main(String[] args) throws Exception {
+//     public static void main(String[] args) throws Exception {
 
-        loadData();
-        int totalQuestions = 90;
+//         loadData();
+//         int totalQuestions = 90;
 
-        // 🔹 ACCOUNT NAME
-        String account = args.length > 0 ? args[0].toUpperCase() : "ACC1";
-        System.out.println("👤 Running account: " + account);
+//         // 🔹 ACCOUNT NAME
+//         String account = args.length > 0 ? args[0].toUpperCase() : "ACC1";
+//         System.out.println("👤 Running account: " + account);
 
-        // 🔹 PROFILE & STATE
-        Path profileDir = Paths.get("profiles", account);
-        Files.createDirectories(profileDir);
-        Path statePath = Paths.get("state_" + account + ".json");
+//         // 🔹 PROFILE & STATE
+//         Path profileDir = Paths.get("profiles", account);
+//         Files.createDirectories(profileDir);
+//         Path statePath = Paths.get("state_" + account + ".json");
 
-        try (Playwright playwright = Playwright.create()) {
+//         try (Playwright playwright = Playwright.create()) {
 
-            BrowserType.LaunchPersistentContextOptions options =
-                    new BrowserType.LaunchPersistentContextOptions()
-                            .setHeadless(true)
-                            .setIgnoreDefaultArgs(List.of("--enable-automation"))
-                            .setArgs(List.of(
-                                    "--disable-blink-features=AutomationControlled",
-                                    "--no-sandbox",
-                                    "--disable-dev-shm-usage"
-                            ))
-                            .setUserAgent(
-                                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                                            "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                                            "Chrome/122.0.0.0 Safari/537.36"
-                            )
-                            .setViewportSize(1920, 800);
+//             BrowserType.LaunchPersistentContextOptions options =
+//                     new BrowserType.LaunchPersistentContextOptions()
+//                             .setHeadless(true)
+//                             .setIgnoreDefaultArgs(List.of("--enable-automation"))
+//                             .setArgs(List.of(
+//                                     "--disable-blink-features=AutomationControlled",
+//                                     "--no-sandbox",
+//                                     "--disable-dev-shm-usage"
+//                             ))
+//                             .setUserAgent(
+//                                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+//                                             "AppleWebKit/537.36 (KHTML, like Gecko) " +
+//                                             "Chrome/122.0.0.0 Safari/537.36"
+//                             )
+//                             .setViewportSize(1920, 800);
 
-            BrowserContext context =
-                    playwright.chromium().launchPersistentContext(profileDir, options);
+//             BrowserContext context =
+//                     playwright.chromium().launchPersistentContext(profileDir, options);
 
-            // 🧠 Anti-bot script
-            context.addInitScript(
-                    "() => {" +
-                            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
-                            "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});" +
-                            "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});" +
-                            "window.chrome={runtime:{}};" +
-                            "}"
-            );
+//             // 🧠 Anti-bot script
+//             context.addInitScript(
+//                     "() => {" +
+//                             "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
+//                             "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});" +
+//                             "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});" +
+//                             "window.chrome={runtime:{}};" +
+//                             "}"
+//             );
 
-            Page page = context.pages().get(0);
-            GroqService ai = new GroqService();
+//             Page page = context.pages().get(0);
+//             GroqService ai = new GroqService();
 
-            // ================= MAIN INFINITE ROUND LOOP =================
-            while (true) {
-                try {
-                    roundsCompleted++;
-                    System.out.println("\n***********************************************");
-                    System.out.println("🚀 STARTING ROUND #" + roundsCompleted + " FOR: " + account);
-                    System.out.println("***********************************************\n");
+//             // ================= MAIN INFINITE ROUND LOOP =================
+//             while (true) {
+//                 try {
+//                     roundsCompleted++;
+//                     System.out.println("\n***********************************************");
+//                     System.out.println("🚀 STARTING ROUND #" + roundsCompleted + " FOR: " + account);
+//                     System.out.println("***********************************************\n");
 
-                    page.navigate(
-                            "https://www.iwacusoft.com/ubumenyibwanjye/index",
-                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                    );
+//                     page.navigate(
+//                             "https://www.iwacusoft.com/ubumenyibwanjye/index",
+//                             new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+//                     );
 
-                    loginIfNeeded(page, context, account, statePath);
+//                     loginIfNeeded(page, context, account, statePath);
 
-                    // --- NAVIGATION & SELECTION ---
-                    Locator startBtn = page.locator("button:has-text('START EARN')");
-                    startBtn.waitFor();
-                    startBtn.click();
+//                     // --- NAVIGATION & SELECTION ---
+//                     Locator startBtn = page.locator("button:has-text('START EARN')");
+//                     startBtn.waitFor();
+//                     startBtn.click();
 
-                    page.locator("#subcategory-3").waitFor();
-                    page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
-                    page.selectOption("#mySelect",
-                            new SelectOption().setValue(String.valueOf(totalQuestions)));
-                    page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
-                    page.click("//button[contains(text(),'START')]");
+//                     page.locator("#subcategory-3").waitFor();
+//                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+//                     page.selectOption("#mySelect",
+//                             new SelectOption().setValue(String.valueOf(totalQuestions)));
+//                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
+//                     page.click("//button[contains(text(),'START')]");
 
-                    FrameLocator quizFrame = page.frameLocator("#iframeId");
+//                     FrameLocator quizFrame = page.frameLocator("#iframeId");
                     
-                    // --- INTERNAL QUESTION LOOP ---
-                    boolean isRoundRunning = true;
-                    int qInThisRound = 0;
+//                     // --- INTERNAL QUESTION LOOP ---
+//                     boolean isRoundRunning = true;
+//                     int qInThisRound = 0;
 
-                    while (isRoundRunning) {
-                        try {
-                            // processQuestion returns false if "Quiz Finished" is detected
-                            isRoundRunning = processQuestion(quizFrame, page, ai);
-                            if (isRoundRunning) qInThisRound++;
-                        } catch (Exception e) {
-                            System.err.println("⚠️ UI Glitch in Round " + roundsCompleted + ". Attempting recovery...");
-                            page.mouse().wheel(0, 200); 
-                            page.waitForTimeout(2000);
+//                     while (isRoundRunning) {
+//                         try {
+//                             // processQuestion returns false if "Quiz Finished" is detected
+//                             isRoundRunning = processQuestion(quizFrame, page, ai);
+//                             if (isRoundRunning) qInThisRound++;
+//                         } catch (Exception e) {
+//                             System.err.println("⚠️ UI Glitch in Round " + roundsCompleted + ". Attempting recovery...");
+//                             page.mouse().wheel(0, 200); 
+//                             page.waitForTimeout(2000);
                             
-                            // Check if the quiz ended during the glitch
-                            if (quizFrame.locator("text=Quiz Finished").isVisible() || 
-                                quizFrame.locator("button:has-text('Try Again')").isVisible()) {
-                                isRoundRunning = false;
-                            }
-                        }
-                    }
+//                             // Check if the quiz ended during the glitch
+//                             if (quizFrame.locator("text=Quiz Finished").isVisible() || 
+//                                 quizFrame.locator("button:has-text('Try Again')").isVisible()) {
+//                                 isRoundRunning = false;
+//                             }
+//                         }
+//                     }
 
-                    System.out.println("\n✅ FINISHED ROUND #" + roundsCompleted);
-                    System.out.println("📊 Questions Answered: " + qInThisRound);
+//                     System.out.println("\n✅ FINISHED ROUND #" + roundsCompleted);
+//                     System.out.println("📊 Questions Answered: " + qInThisRound);
                     
-                    saveData();
-                    humanWait(page, 3000, 6000); // Breathe before the next round selection
+//                     saveData();
+//                     humanWait(page, 3000, 6000); // Breathe before the next round selection
 
-                } catch (Exception e) {
-                    System.err.println("🔁 Round " + roundsCompleted + " crashed. Restarting session...");
-                    page.waitForTimeout(5000);
-                }
-            }
-        }
-    }
+//                 } catch (Exception e) {
+//                     System.err.println("🔁 Round " + roundsCompleted + " crashed. Restarting session...");
+//                     page.waitForTimeout(5000);
+//                 }
+//             }
+//         }
+//     }
 
-    // ================= QUESTION LOGIC =================
-    private static boolean processQuestion(FrameLocator quizFrame, Page page, GroqService ai) throws Exception {
+//     // ================= QUESTION LOGIC =================
+//     private static boolean processQuestion(FrameLocator quizFrame, Page page, GroqService ai) throws Exception {
         
-        // 1. END DETECTION: Check if the round is finished
-        if (quizFrame.locator("text=Quiz Finished").isVisible() || 
-            quizFrame.locator("text=Result").isVisible() ||
-            quizFrame.locator("button:has-text('Try Again')").isVisible()) {
-            return false; 
-        }
+//         // 1. END DETECTION: Check if the round is finished
+//         if (quizFrame.locator("text=Quiz Finished").isVisible() || 
+//             quizFrame.locator("text=Result").isVisible() ||
+//             quizFrame.locator("button:has-text('Try Again')").isVisible()) {
+//             return false; 
+//         }
 
-        // 2. WAIT for Question Title (5s timeout)
-        Locator title = quizFrame.locator("#qTitle");
-        try {
-            title.waitFor(new Locator.WaitForOptions().setTimeout(5000));
-        } catch (Exception e) {
-            return false; // If title doesn't appear, round likely ended
-        }
+//         // 2. WAIT for Question Title (5s timeout)
+//         Locator title = quizFrame.locator("#qTitle");
+//         try {
+//             title.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+//         } catch (Exception e) {
+//             return false; // If title doesn't appear, round likely ended
+//         }
 
-        String qText = title.innerText().trim();
+//         String qText = title.innerText().trim();
         
-        // Anti-double-process check
-        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) {
-            page.waitForTimeout(1000);
-            return true; 
-        }
-        lastProcessedQuestion = qText;
+//         // Anti-double-process check
+//         if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) {
+//             page.waitForTimeout(1000);
+//             return true; 
+//         }
+//         lastProcessedQuestion = qText;
 
-        // 3. GET OPTIONS
-        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
-        options.removeIf(String::isEmpty);
+//         // 3. GET OPTIONS
+//         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+//         options.removeIf(String::isEmpty);
 
-        if (options.isEmpty()) return true;
+//         if (options.isEmpty()) return true;
 
-        // 4. CHOOSE ANSWER (Memory first, then Random/AI)
-        String choice = masterDatabase.getOrDefault(qText, 
-                        options.get(random.nextInt(options.size())));
+//         // 4. CHOOSE ANSWER (Memory first, then Random/AI)
+//         String choice = masterDatabase.getOrDefault(qText, 
+//                         options.get(random.nextInt(options.size())));
         
-        System.out.println("📝 [R" + roundsCompleted + "] Q: " + 
-                           (qText.length() > 30 ? qText.substring(0, 30) + "..." : qText) + 
-                           " | Ans: " + choice);
+//         System.out.println("📝 [R" + roundsCompleted + "] Q: " + 
+//                            (qText.length() > 30 ? qText.substring(0, 30) + "..." : qText) + 
+//                            " | Ans: " + choice);
 
-        // 5. CLICK & SUBMIT
-        try {
-            quizFrame.locator(".opt")
-                    .filter(new Locator.FilterOptions().setHasText(choice))
-                    .first()
-                    .click(new Locator.ClickOptions().setForce(true).setTimeout(3000));
+//         // 5. CLICK & SUBMIT
+//         try {
+//             quizFrame.locator(".opt")
+//                     .filter(new Locator.FilterOptions().setHasText(choice))
+//                     .first()
+//                     .click(new Locator.ClickOptions().setForce(true).setTimeout(3000));
             
-            page.waitForTimeout(500);
+//             page.waitForTimeout(500);
             
-            quizFrame.locator("button:has-text('Submit'), #submitBtn")
-                    .first()
-                    .click(new Locator.ClickOptions().setTimeout(3000));
-        } catch (Exception e) {
-            throw new Exception("Click Failed");
-        }
+//             quizFrame.locator("button:has-text('Submit'), #submitBtn")
+//                     .first()
+//                     .click(new Locator.ClickOptions().setTimeout(3000));
+//         } catch (Exception e) {
+//             throw new Exception("Click Failed");
+//         }
 
-        return true; 
-    }
+//         return true; 
+//     }
 
-    // ================= LOGIN LOGIC =================
-    private static void loginIfNeeded(Page page, BrowserContext context, String account, Path statePath) {
-        try {
-            page.waitForTimeout(2000);
-            if (page.locator("button:has-text('START EARN')").isVisible()) {
-                System.out.println("✅ Already logged in: " + account);
-                return;
-            }
+//     // ================= LOGIN LOGIC =================
+//     private static void loginIfNeeded(Page page, BrowserContext context, String account, Path statePath) {
+//         try {
+//             page.waitForTimeout(2000);
+//             if (page.locator("button:has-text('START EARN')").isVisible()) {
+//                 System.out.println("✅ Already logged in: " + account);
+//                 return;
+//             }
 
-            Locator phoneInput = page.locator("input[placeholder*='Phone']");
-            if (!phoneInput.isVisible()) return;
+//             Locator phoneInput = page.locator("input[placeholder*='Phone']");
+//             if (!phoneInput.isVisible()) return;
 
-            String phone = System.getenv("LOGIN_PHONE");
-            String pin   = System.getenv("LOGIN_PIN");
+//             String phone = System.getenv("LOGIN_PHONE");
+//             String pin   = System.getenv("LOGIN_PIN");
 
-            if (phone == null || pin == null) {
-                throw new RuntimeException("Missing secrets for " + account);
-            }
+//             if (phone == null || pin == null) {
+//                 throw new RuntimeException("Missing secrets for " + account);
+//             }
 
-            phoneInput.fill(phone);
-            page.locator("input[placeholder*='PIN']").fill(pin);
-            page.click("//button[contains(., 'Log in')]");
+//             phoneInput.fill(phone);
+//             page.locator("input[placeholder*='PIN']").fill(pin);
+//             page.click("//button[contains(., 'Log in')]");
 
-            page.waitForURL("**/index", new Page.WaitForURLOptions().setTimeout(15000));
-            context.storageState(new BrowserContext.StorageStateOptions().setPath(statePath));
-            System.out.println("💾 Login saved for " + account);
+//             page.waitForURL("**/index", new Page.WaitForURLOptions().setTimeout(15000));
+//             context.storageState(new BrowserContext.StorageStateOptions().setPath(statePath));
+//             System.out.println("💾 Login saved for " + account);
 
-        } catch (Exception e) {
-            System.err.println("❌ Login failed for " + account + ": " + e.getMessage());
-        }
-    }
+//         } catch (Exception e) {
+//             System.err.println("❌ Login failed for " + account + ": " + e.getMessage());
+//         }
+//     }
 
-    // ================= DATA PERSISTENCE =================
-    private static void saveData() {
-        try (Writer writer = new FileWriter(DATA_FILE)) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("database", masterDatabase);
-            data.put("totalMarks", totalMarksGained);
-            new Gson().toJson(data, writer);
-            System.out.println("💾 Progress saved to disk.");
-        } catch (IOException e) {
-            System.err.println("❌ Failed to save data: " + e.getMessage());
-        }
-    }
+//     // ================= DATA PERSISTENCE =================
+//     private static void saveData() {
+//         try (Writer writer = new FileWriter(DATA_FILE)) {
+//             Map<String, Object> data = new HashMap<>();
+//             data.put("database", masterDatabase);
+//             data.put("totalMarks", totalMarksGained);
+//             new Gson().toJson(data, writer);
+//             System.out.println("💾 Progress saved to disk.");
+//         } catch (IOException e) {
+//             System.err.println("❌ Failed to save data: " + e.getMessage());
+//         }
+//     }
 
-    private static void loadData() {
-        try {
-            File file = new File(DATA_FILE);
-            if (file.exists()) {
-                Reader reader = new FileReader(file);
-                Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
-                if (data != null) {
-                    if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
-                    if (data.get("totalMarks") != null) {
-                        totalMarksGained = ((Double) data.get("totalMarks")).intValue();
-                    }
-                }
-                System.out.println("📂 Memory Loaded. Database size: " + masterDatabase.size());
-            }
-        } catch (Exception e) {
-            System.err.println("⚠️ Could not load database. Starting fresh.");
-        }
-    }
+//     private static void loadData() {
+//         try {
+//             File file = new File(DATA_FILE);
+//             if (file.exists()) {
+//                 Reader reader = new FileReader(file);
+//                 Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
+//                 if (data != null) {
+//                     if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
+//                     if (data.get("totalMarks") != null) {
+//                         totalMarksGained = ((Double) data.get("totalMarks")).intValue();
+//                     }
+//                 }
+//                 System.out.println("📂 Memory Loaded. Database size: " + masterDatabase.size());
+//             }
+//         } catch (Exception e) {
+//             System.err.println("⚠️ Could not load database. Starting fresh.");
+//         }
+//     }
 
-    private static void humanWait(Page page, int min, int max) {
-        page.waitForTimeout(random.nextInt(max - min + 1) + min);
-    }
-}
+//     private static void humanWait(Page page, int min, int max) {
+//         page.waitForTimeout(random.nextInt(max - min + 1) + min);
+//     }
+// }
 
 // import com.microsoft.playwright.*;
 // import com.microsoft.playwright.options.*;
@@ -926,369 +926,369 @@ public class DoQuizTest {
 // }
 
 
-// import com.microsoft.playwright.*;
-// import com.microsoft.playwright.options.*;
-// import page.GroqService;
-// import com.google.gson.Gson;
-// import com.google.gson.reflect.TypeToken;
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.*;
+import page.GroqService;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
-// import java.io.*;
-// import java.nio.file.Files;
-// import java.nio.file.Path;
-// import java.nio.file.Paths;
-// import java.util.*;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 
-// public class DoQuizTest {
+public class DoQuizTest {
 
-//     private static String lastProcessedQuestion = "";
-//     private static Map<String, String> masterDatabase = new HashMap<>();
-//     private static final String DATA_FILE = "statistics.json";
-//     private static int totalMarksGained = 0;
-//     private static final Random random = new Random();
-//     private static final int MAX_RETRIES = 2;
-//     private static final int QUESTION_TIMEOUT_MS = 10000;
+    private static String lastProcessedQuestion = "";
+    private static Map<String, String> masterDatabase = new HashMap<>();
+    private static final String DATA_FILE = "statistics.json";
+    private static int totalMarksGained = 0;
+    private static final Random random = new Random();
+    private static final int MAX_RETRIES = 2;
+    private static final int QUESTION_TIMEOUT_MS = 10000;
 
-//     // ==================== HARD RESTART FUNCTION ====================
-//     private static void hardRestart(Page page) {
-//         lastProcessedQuestion = "";
-//         System.out.println("🔁 Restarting quiz from beginning...");
-//         try {
-//             page.navigate(
-//                     "https://www.iwacusoft.com/ubumenyibwanjye/index",
-//                     new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-//             );
-//         } catch (Exception e) {
-//             System.err.println("❌ Failed to navigate during hard restart: " + e.getMessage());
-//         }
-//     }
+    // ==================== HARD RESTART FUNCTION ====================
+    private static void hardRestart(Page page) {
+        lastProcessedQuestion = "";
+        System.out.println("🔁 Restarting quiz from beginning...");
+        try {
+            page.navigate(
+                    "https://www.iwacusoft.com/ubumenyibwanjye/index",
+                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+            );
+        } catch (Exception e) {
+            System.err.println("❌ Failed to navigate during hard restart: " + e.getMessage());
+        }
+    }
 
-//     public static void main(String[] args) {
+    public static void main(String[] args) {
 
-//         loadData();
-//         int totalQuestions = 90;
+        loadData();
+        int totalQuestions = 90;
 
-//         try (Playwright playwright = Playwright.create()) {
+        try (Playwright playwright = Playwright.create()) {
 
-//             Path userDataDir = Paths.get("bot_profile");
-//             try {
-//                 if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
-//             } catch (IOException e) {
-//                 System.err.println("❌ Could not create bot_profile directory: " + e.getMessage());
-//             }
+            Path userDataDir = Paths.get("bot_profile");
+            try {
+                if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
+            } catch (IOException e) {
+                System.err.println("❌ Could not create bot_profile directory: " + e.getMessage());
+            }
 
-//             BrowserType.LaunchPersistentContextOptions options =
-//                     new BrowserType.LaunchPersistentContextOptions()
-//                             .setHeadless(true)
-//                             .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
-//                             .setArgs(Arrays.asList(
-//                                     "--disable-blink-features=AutomationControlled",
-//                                     "--no-sandbox",
-//                                     "--disable-dev-shm-usage",
-//                                     "--start-maximized"
-//                             ))
-//                             .setUserAgent(
-//                                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-//                                             "AppleWebKit/537.36 (KHTML, like Gecko) " +
-//                                             "Chrome/122.0.0.0 Safari/537.36"
-//                             )
-//                             .setViewportSize(1920, 800)
-//                             .setSlowMo(0);
+            BrowserType.LaunchPersistentContextOptions options =
+                    new BrowserType.LaunchPersistentContextOptions()
+                            .setHeadless(true)
+                            .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
+                            .setArgs(Arrays.asList(
+                                    "--disable-blink-features=AutomationControlled",
+                                    "--no-sandbox",
+                                    "--disable-dev-shm-usage",
+                                    "--start-maximized"
+                            ))
+                            .setUserAgent(
+                                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                                            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                                            "Chrome/122.0.0.0 Safari/537.36"
+                            )
+                            .setViewportSize(1920, 800)
+                            .setSlowMo(0);
 
-//             BrowserContext context =
-//                     playwright.chromium().launchPersistentContext(userDataDir, options);
+            BrowserContext context =
+                    playwright.chromium().launchPersistentContext(userDataDir, options);
 
-//             context.addInitScript(
-//                     "() => {" +
-//                             "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
-//                             "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});" +
-//                             "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});" +
-//                             "window.chrome={runtime:{}};" +
-//                             "}"
-//             );
+            context.addInitScript(
+                    "() => {" +
+                            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
+                            "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});" +
+                            "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});" +
+                            "window.chrome={runtime:{}};" +
+                            "}"
+            );
 
-//             Page page = context.pages().get(0);
-//             GroqService ai = new GroqService();
+            Page page = context.pages().get(0);
+            GroqService ai = new GroqService();
 
-//             // ==================== SAFETY MEASURE START ====================
-//             while (true) {
-//                 try {
+            // ==================== SAFETY MEASURE START ====================
+            while (true) {
+                try {
 
-//                     System.out.println(
-//                             "\n📊 [" + new Date() + "] STATS | MARKS: " +
-//                                     totalMarksGained + " | MEMORY: " + masterDatabase.size()
-//                     );
+                    System.out.println(
+                            "\n📊 [" + new Date() + "] STATS | MARKS: " +
+                                    totalMarksGained + " | MEMORY: " + masterDatabase.size()
+                    );
 
-//                     page = loginIfNeeded(page, context);
+                    page = loginIfNeeded(page, context);
 
-//                     try {
-//                         page.navigate(
-//                                 "https://www.iwacusoft.com/ubumenyibwanjye/index",
-//                                 new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-//                         );
-//                     } catch (Exception e) {
-//                         System.err.println("❌ Navigation failed: " + e.getMessage());
-//                         hardRestart(page);
-//                         continue;
-//                     }
+                    try {
+                        page.navigate(
+                                "https://www.iwacusoft.com/ubumenyibwanjye/index",
+                                new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                        );
+                    } catch (Exception e) {
+                        System.err.println("❌ Navigation failed: " + e.getMessage());
+                        hardRestart(page);
+                        continue;
+                    }
 
-//                     Locator startBtn;
-//                     try {
-//                         startBtn = page.locator("button:has-text('START EARN')");
-//                         startBtn.waitFor();
-//                         startBtn.click();
-//                     } catch (Exception e) {
-//                         System.err.println("❌ Failed to click START EARN: " + e.getMessage());
-//                         hardRestart(page);
-//                         continue;
-//                     }
+                    Locator startBtn;
+                    try {
+                        startBtn = page.locator("button:has-text('START EARN')");
+                        startBtn.waitFor();
+                        startBtn.click();
+                    } catch (Exception e) {
+                        System.err.println("❌ Failed to click START EARN: " + e.getMessage());
+                        hardRestart(page);
+                        continue;
+                    }
 
-//                     // ==================== Keep your logic intact ====================
-//                     page.locator("#subcategory-3").waitFor();
-//                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
-//                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
-//                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
-//                     page.click("//button[contains(text(),'START')]");
+                    // ==================== Keep your logic intact ====================
+                    page.locator("#subcategory-3").waitFor();
+                    page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+                    page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
+                    page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
+                    page.click("//button[contains(text(),'START')]");
 
-//                     FrameLocator quizFrame = page.frameLocator("#iframeId");
-//                     int currentQuestion = 1;
+                    FrameLocator quizFrame = page.frameLocator("#iframeId");
+                    int currentQuestion = 1;
 
-//                     while (currentQuestion <= totalQuestions) {
+                    while (currentQuestion <= totalQuestions) {
 
-//                         boolean success = false;
-//                         int attempt = 0;
-//                         long questionStartTime = System.currentTimeMillis();
+                        boolean success = false;
+                        int attempt = 0;
+                        long questionStartTime = System.currentTimeMillis();
 
-//                         while (!success && attempt < MAX_RETRIES) {
-//                             attempt++;
-//                             try {
-//                                 FrameLocator quizFrameRetry;
-//                                 while (true) {
-//                                     try {
-//                                         quizFrameRetry = page.frameLocator("#iframeId");
-//                                         quizFrameRetry.locator("#qTitle")
-//                                                 .waitFor(new Locator.WaitForOptions().setTimeout(5000));
-//                                         break;
-//                                     } catch (PlaywrightException e) {
-//                                         System.out.println("⚠️ Waiting for quiz frame... retrying in 5s");
-//                                         page.waitForTimeout(5000);
-//                                     }
-//                                 }
-//                                 processQuestion(quizFrameRetry, page, ai, currentQuestion, questionStartTime);
-//                                 success = true;
-//                                 currentQuestion++;
-//                             } catch (Exception e) {
-//                                 System.err.println(
-//                                         "⚠️ Retry Q" + currentQuestion +
-//                                                 " attempt " + attempt + " | " + e.getMessage()
-//                                 );
-//                                 page.waitForTimeout(3000);
-//                             }
-//                         }
+                        while (!success && attempt < MAX_RETRIES) {
+                            attempt++;
+                            try {
+                                FrameLocator quizFrameRetry;
+                                while (true) {
+                                    try {
+                                        quizFrameRetry = page.frameLocator("#iframeId");
+                                        quizFrameRetry.locator("#qTitle")
+                                                .waitFor(new Locator.WaitForOptions().setTimeout(5000));
+                                        break;
+                                    } catch (PlaywrightException e) {
+                                        System.out.println("⚠️ Waiting for quiz frame... retrying in 5s");
+                                        page.waitForTimeout(5000);
+                                    }
+                                }
+                                processQuestion(quizFrameRetry, page, ai, currentQuestion, questionStartTime);
+                                success = true;
+                                currentQuestion++;
+                            } catch (Exception e) {
+                                System.err.println(
+                                        "⚠️ Retry Q" + currentQuestion +
+                                                " attempt " + attempt + " | " + e.getMessage()
+                                );
+                                page.waitForTimeout(3000);
+                            }
+                        }
 
-//                         if (!success) {
-//                             System.err.println("❌ Q" + currentQuestion + " skipped after retries.");
-//                             currentQuestion++;
-//                         }
-//                     }
+                        if (!success) {
+                            System.err.println("❌ Q" + currentQuestion + " skipped after retries.");
+                            currentQuestion++;
+                        }
+                    }
 
-//                     saveData();
-//                     System.out.println("🏁 Batch finished. Sleeping briefly...");
-//                     humanWait(page, 1500, 3000);
+                    saveData();
+                    System.out.println("🏁 Batch finished. Sleeping briefly...");
+                    humanWait(page, 1500, 3000);
 
-//                 } catch (Exception e) {
-//                     System.err.println("🔄 Main loop error: " + e.getMessage());
-//                     hardRestart(page);
-//                     continue;
-//                 }
+                } catch (Exception e) {
+                    System.err.println("🔄 Main loop error: " + e.getMessage());
+                    hardRestart(page);
+                    continue;
+                }
 
-//                 humanWait(page, 2000, 3500);
-//             }
-//             // ==================== SAFETY MEASURE END ====================
-//         } catch (Exception e) {
-//             System.err.println("❌ Playwright initialization failed: " + e.getMessage());
-//         }
-//     }
+                humanWait(page, 2000, 3500);
+            }
+            // ==================== SAFETY MEASURE END ====================
+        } catch (Exception e) {
+            System.err.println("❌ Playwright initialization failed: " + e.getMessage());
+        }
+    }
 
-//     // ==================== Login Method ====================
-//     private static Page loginIfNeeded(Page page, BrowserContext context) {
-//         try {
-//             Locator phoneInput = page.locator("input[placeholder*='Phone']");
-//             if (phoneInput.isVisible()) {
-//                 phoneInput.fill("0786862261");
-//                 page.locator("input[placeholder*='PIN']").fill("12345");
-//                 page.click("//button[contains(., 'Log in')]");
-//                 page.waitForURL("**/index",
-//                         new Page.WaitForURLOptions().setTimeout(10000));
-//                 context.storageState(
-//                         new BrowserContext.StorageStateOptions()
-//                                 .setPath(Paths.get("state.json"))
-//                 );
-//                 System.out.println("✅ Auto-login successful");
-//             }
-//         } catch (Exception ignored) {}
-//         return page;
-//     }
+    // ==================== Login Method ====================
+    private static Page loginIfNeeded(Page page, BrowserContext context) {
+        try {
+            Locator phoneInput = page.locator("input[placeholder*='Phone']");
+            if (phoneInput.isVisible()) {
+                phoneInput.fill("0786862261");
+                page.locator("input[placeholder*='PIN']").fill("12345");
+                page.click("//button[contains(., 'Log in')]");
+                page.waitForURL("**/index",
+                        new Page.WaitForURLOptions().setTimeout(10000));
+                context.storageState(
+                        new BrowserContext.StorageStateOptions()
+                                .setPath(Paths.get("state.json"))
+                );
+                System.out.println("✅ Auto-login successful");
+            }
+        } catch (Exception ignored) {}
+        return page;
+    }
 
-//     // ==================== Human Wait ====================
-//     private static void humanWait(Page page, int min, int max) {
-//         int delay = random.nextInt(max - min + 1) + min;
-//         page.waitForTimeout(delay);
-//     }
+    // ==================== Human Wait ====================
+    private static void humanWait(Page page, int min, int max) {
+        int delay = random.nextInt(max - min + 1) + min;
+        page.waitForTimeout(delay);
+    }
 
-//     // ==================== Save Data ====================
-//     private static void saveData() {
-//         try (Writer writer = new FileWriter(DATA_FILE)) {
-//             Map<String, Object> data = new HashMap<>();
-//             data.put("database", masterDatabase);
-//             data.put("totalMarks", totalMarksGained);
-//             new Gson().toJson(data, writer);
-//         } catch (IOException ignored) {}
-//     }
+    // ==================== Save Data ====================
+    private static void saveData() {
+        try (Writer writer = new FileWriter(DATA_FILE)) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("database", masterDatabase);
+            data.put("totalMarks", totalMarksGained);
+            new Gson().toJson(data, writer);
+        } catch (IOException ignored) {}
+    }
 
-//     // ==================== Load Data ====================
-//     private static void loadData() {
-//         try {
-//             File file = new File(DATA_FILE);
-//             if (file.exists()) {
-//                 Reader reader = new FileReader(file);
-//                 Map<String, Object> data =
-//                         new Gson().fromJson(
-//                                 reader,
-//                                 new TypeToken<Map<String, Object>>() {}.getType()
-//                         );
-//                 if (data != null) {
-//                     if (data.get("database") != null)
-//                         masterDatabase = (Map<String, String>) data.get("database");
-//                     if (data.get("totalMarks") != null)
-//                         totalMarksGained =
-//                                 ((Double) data.get("totalMarks")).intValue();
-//                 }
-//                 System.out.println("📂 Memory Loaded: " + masterDatabase.size());
-//             }
-//         } catch (Exception ignored) {}
-//     }
+    // ==================== Load Data ====================
+    private static void loadData() {
+        try {
+            File file = new File(DATA_FILE);
+            if (file.exists()) {
+                Reader reader = new FileReader(file);
+                Map<String, Object> data =
+                        new Gson().fromJson(
+                                reader,
+                                new TypeToken<Map<String, Object>>() {}.getType()
+                        );
+                if (data != null) {
+                    if (data.get("database") != null)
+                        masterDatabase = (Map<String, String>) data.get("database");
+                    if (data.get("totalMarks") != null)
+                        totalMarksGained =
+                                ((Double) data.get("totalMarks")).intValue();
+                }
+                System.out.println("📂 Memory Loaded: " + masterDatabase.size());
+            }
+        } catch (Exception ignored) {}
+    }
 
-//     // ==================== processQuestion METHOD (MISSING) ====================
-//     private static void processQuestion(
-//             FrameLocator quizFrame,
-//             Page page,
-//             GroqService ai,
-//             int i,
-//             long questionStartTime
-//     ) throws Exception {
+    // ==================== processQuestion METHOD (MISSING) ====================
+    private static void processQuestion(
+            FrameLocator quizFrame,
+            Page page,
+            GroqService ai,
+            int i,
+            long questionStartTime
+    ) throws Exception {
 
-//         int cycles = 0;
-//         String qText = "";
+        int cycles = 0;
+        String qText = "";
 
-//         while (cycles < QUESTION_TIMEOUT_MS / 200) {
-//             try {
-//                 qText = quizFrame.locator("#qTitle").innerText().trim();
-//                 if (!qText.isEmpty()
-//                         && !qText.contains("Loading")
-//                         && !qText.equals(lastProcessedQuestion)) break;
-//             } catch (Exception ignored) {}
+        while (cycles < QUESTION_TIMEOUT_MS / 200) {
+            try {
+                qText = quizFrame.locator("#qTitle").innerText().trim();
+                if (!qText.isEmpty()
+                        && !qText.contains("Loading")
+                        && !qText.equals(lastProcessedQuestion)) break;
+            } catch (Exception ignored) {}
 
-//             page.waitForTimeout(200);
-//             cycles++;
+            page.waitForTimeout(200);
+            cycles++;
 
-//             if (System.currentTimeMillis() - questionStartTime > 10_000) {
-//                 Locator retryBtn = quizFrame.locator("#retryBtn");
-//                 if (retryBtn.isVisible()) {
-//                     retryBtn.click();
-//                     System.out.println("⏱️ >10s before submit → Retry clicked");
-//                 }
-//                 throw new Exception("Submit exceeded 10 seconds");
-//             }
-//         }
+            if (System.currentTimeMillis() - questionStartTime > 10_000) {
+                Locator retryBtn = quizFrame.locator("#retryBtn");
+                if (retryBtn.isVisible()) {
+                    retryBtn.click();
+                    System.out.println("⏱️ >10s before submit → Retry clicked");
+                }
+                throw new Exception("Submit exceeded 10 seconds");
+            }
+        }
 
-//         if (qText.isEmpty() || qText.equals(lastProcessedQuestion))
-//             throw new Exception("Question not loaded properly");
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion))
+            throw new Exception("Question not loaded properly");
 
-//         lastProcessedQuestion = qText;
+        lastProcessedQuestion = qText;
 
-//         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
-//         options.removeIf(String::isEmpty);
+        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+        options.removeIf(String::isEmpty);
 
-//         if (options.isEmpty())
-//             throw new Exception("No answer options loaded");
+        if (options.isEmpty())
+            throw new Exception("No answer options loaded");
 
-//         String finalChoice;
+        String finalChoice;
 
-//         if (masterDatabase.containsKey(qText)) {
-//             finalChoice = masterDatabase.get(qText);
-//             System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
-//         } else {
+        if (masterDatabase.containsKey(qText)) {
+            finalChoice = masterDatabase.get(qText);
+            System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
+        } else {
 
-//             StringBuilder promptBuilder = new StringBuilder();
-//             promptBuilder.append("Question: ").append(qText).append("\nOptions:\n");
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("Question: ").append(qText).append("\nOptions:\n");
 
-//             for (int idx = 0; idx < options.size(); idx++) {
-//                 promptBuilder.append(idx + 1).append(") ")
-//                         .append(options.get(idx)).append("\n");
-//             }
+            for (int idx = 0; idx < options.size(); idx++) {
+                promptBuilder.append(idx + 1).append(") ")
+                        .append(options.get(idx)).append("\n");
+            }
 
-//             promptBuilder.append(
-//                     "Respond with the exact NUMBER of the correct option only."
-//             );
+            promptBuilder.append(
+                    "Respond with the exact NUMBER of the correct option only."
+            );
 
-//             String aiResponse = ai.askAI(promptBuilder.toString())
-//                     .replaceAll("[^0-9]", "")
-//                     .trim();
+            String aiResponse = ai.askAI(promptBuilder.toString())
+                    .replaceAll("[^0-9]", "")
+                    .trim();
 
-//             int choiceIndex;
+            int choiceIndex;
 
-//             try {
-//                 int number = Integer.parseInt(aiResponse);
-//                 if (number >= 1 && number <= options.size()) {
-//                     choiceIndex = number - 1;
-//                 } else {
-//                     choiceIndex = random.nextInt(options.size());
-//                 }
-//             } catch (Exception e) {
-//                 choiceIndex = random.nextInt(options.size());
-//             }
+            try {
+                int number = Integer.parseInt(aiResponse);
+                if (number >= 1 && number <= options.size()) {
+                    choiceIndex = number - 1;
+                } else {
+                    choiceIndex = random.nextInt(options.size());
+                }
+            } catch (Exception e) {
+                choiceIndex = random.nextInt(options.size());
+            }
 
-//             finalChoice = options.get(choiceIndex);
+            finalChoice = options.get(choiceIndex);
 
-//             System.out.println(
-//                     "📝 Q" + i + " [AI] Chose option " +
-//                             (choiceIndex + 1) + ": " + finalChoice
-//             );
-//         }
+            System.out.println(
+                    "📝 Q" + i + " [AI] Chose option " +
+                            (choiceIndex + 1) + ": " + finalChoice
+            );
+        }
 
-//         Locator answerLocator = quizFrame.locator(".opt")
-//                 .filter(new Locator.FilterOptions().setHasText(finalChoice))
-//                 .first();
+        Locator answerLocator = quizFrame.locator(".opt")
+                .filter(new Locator.FilterOptions().setHasText(finalChoice))
+                .first();
 
-//         answerLocator.waitFor(new Locator.WaitForOptions().setTimeout(5000));
-//         answerLocator.click();
+        answerLocator.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+        answerLocator.click();
 
-//         humanWait(page, 500, 1000);
+        humanWait(page, 500, 1000);
 
-//         Locator submitBtn = quizFrame
-//                 .locator("button:has-text('Submit'), #submitBtn")
-//                 .first();
+        Locator submitBtn = quizFrame
+                .locator("button:has-text('Submit'), #submitBtn")
+                .first();
 
-//         submitBtn.waitFor(new Locator.WaitForOptions().setTimeout(5000));
-//         submitBtn.click();
+        submitBtn.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+        submitBtn.click();
 
-//         page.waitForTimeout(500);
+        page.waitForTimeout(500);
 
-//         try {
-//             String resultText = quizFrame.locator("#lastBody").innerText();
-//             if (resultText.contains("Correct:")) {
-//                 String correctLetter =
-//                         resultText.split("Correct:")[1].trim().substring(0, 1);
-//                 int correctIndex = correctLetter.charAt(0) - 'A';
-//                 if (correctIndex >= 0 && correctIndex < options.size()) {
-//                     String actualAns = options.get(correctIndex);
-//                     masterDatabase.put(qText, actualAns);
-//                     if (finalChoice.equalsIgnoreCase(actualAns))
-//                         totalMarksGained++;
-//                     saveData();
-//                 }
-//             }
-//         } catch (Exception ignored) {}
-//     }
+        try {
+            String resultText = quizFrame.locator("#lastBody").innerText();
+            if (resultText.contains("Correct:")) {
+                String correctLetter =
+                        resultText.split("Correct:")[1].trim().substring(0, 1);
+                int correctIndex = correctLetter.charAt(0) - 'A';
+                if (correctIndex >= 0 && correctIndex < options.size()) {
+                    String actualAns = options.get(correctIndex);
+                    masterDatabase.put(qText, actualAns);
+                    if (finalChoice.equalsIgnoreCase(actualAns))
+                        totalMarksGained++;
+                    saveData();
+                }
+            }
+        } catch (Exception ignored) {}
+    }
 
-// }
+}
