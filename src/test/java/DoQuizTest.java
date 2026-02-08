@@ -1,3 +1,78 @@
+// Replace your existing while(q <= totalQuestions) loop and processQuestion with this:
+
+                    while (q <= totalQuestions) {
+                        try {
+                            // Added a specific timeout so it doesn't hang forever
+                            processQuestion(quizFrame, page, ai, q);
+                            q++;
+                        } catch (Exception e) {
+                            System.err.println("⚠️ Q" + q + " failed or timed out. Retrying...");
+                            // If the iframe is stuck, sometimes a small scroll or click helps
+                            page.mouse().wheel(0, 100); 
+                            page.waitForTimeout(2000);
+                            
+                            // Check if the quiz actually ended
+                            if (quizFrame.locator("text=Quiz Finished").isVisible()) break;
+                        }
+                    }
+
+// ... (In the processQuestion method) ...
+
+    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
+        // 1. Give the question title a STRICT 5-second limit
+        Locator title = quizFrame.locator("#qTitle");
+        title.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+
+        String qText = title.innerText().trim();
+        
+        // Prevent double-processing
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) {
+            page.waitForTimeout(1000);
+            return; 
+        }
+        lastProcessedQuestion = qText;
+
+        // 2. Ensure options are visible
+        Locator opts = quizFrame.locator(".opt .txt");
+        opts.first().waitFor(new Locator.WaitForOptions().setTimeout(3000));
+        
+        List<String> options = opts.allInnerTexts();
+        options.removeIf(String::isEmpty);
+
+        if (options.isEmpty()) throw new Exception("No options found");
+
+        // 3. Choice Logic
+        String choice;
+        if (masterDatabase.containsKey(qText)) {
+            choice = masterDatabase.get(qText);
+            System.out.println("📝 Q" + i + " [Memory]: " + choice);
+        } else {
+            // Your AI logic here
+            choice = options.get(random.nextInt(options.size()));
+            System.out.println("📝 Q" + i + " [Random]: " + choice);
+        }
+
+        // 4. Click with FORCE to prevent "Element is obscured" errors
+        try {
+            quizFrame.locator(".opt")
+                    .filter(new Locator.FilterOptions().setHasText(choice))
+                    .first()
+                    .click(new Locator.ClickOptions().setForce(true).setTimeout(3000));
+            
+            page.waitForTimeout(500);
+            
+            quizFrame.locator("button:has-text('Submit'), #submitBtn")
+                    .first()
+                    .click(new Locator.ClickOptions().setTimeout(3000));
+        } catch (Exception e) {
+            System.err.println("❌ Click failed for Q" + i);
+            throw e; // Push to the retry loop
+        }
+    }
+
+
+
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import page.GroqService;
@@ -90,12 +165,21 @@ public class DoQuizTest {
                     FrameLocator quizFrame = page.frameLocator("#iframeId");
                     int q = 1;
 
+                    // Replace your existing while(q <= totalQuestions) loop and processQuestion with this:
+
                     while (q <= totalQuestions) {
                         try {
-                            processQuestion(quizFrame, page, ai, q, System.currentTimeMillis());
+                            // Added a specific timeout so it doesn't hang forever
+                            processQuestion(quizFrame, page, ai, q);
                             q++;
                         } catch (Exception e) {
+                            System.err.println("⚠️ Q" + q + " failed or timed out. Retrying...");
+                            // If the iframe is stuck, sometimes a small scroll or click helps
+                            page.mouse().wheel(0, 100); 
                             page.waitForTimeout(2000);
+                            
+                            // Check if the quiz actually ended
+                            if (quizFrame.locator("text=Quiz Finished").isVisible()) break;
                         }
                     }
 
@@ -154,31 +238,56 @@ public class DoQuizTest {
 
 
     // ================= QUESTION LOGIC (UNCHANGED) =================
-    private static void processQuestion(FrameLocator quizFrame,
-                                        Page page,
-                                        GroqService ai,
-                                        int i,
-                                        long start) throws Exception {
+    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
+        // 1. Give the question title a STRICT 5-second limit
+        Locator title = quizFrame.locator("#qTitle");
+        title.waitFor(new Locator.WaitForOptions().setTimeout(5000));
 
-        quizFrame.locator("#qTitle")
-                .waitFor(new Locator.WaitForOptions().setTimeout(5000));
-
-        String qText = quizFrame.locator("#qTitle").innerText().trim();
-        if (qText.equals(lastProcessedQuestion)) throw new Exception();
-
+        String qText = title.innerText().trim();
+        
+        // Prevent double-processing
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) {
+            page.waitForTimeout(1000);
+            return; 
+        }
         lastProcessedQuestion = qText;
 
-        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+        // 2. Ensure options are visible
+        Locator opts = quizFrame.locator(".opt .txt");
+        opts.first().waitFor(new Locator.WaitForOptions().setTimeout(3000));
+        
+        List<String> options = opts.allInnerTexts();
         options.removeIf(String::isEmpty);
 
-        String choice = masterDatabase.getOrDefault(qText,
-                options.get(random.nextInt(options.size())));
+        if (options.isEmpty()) throw new Exception("No options found");
 
-        quizFrame.locator(".opt")
-                .filter(new Locator.FilterOptions().setHasText(choice))
-                .first().click();
+        // 3. Choice Logic
+        String choice;
+        if (masterDatabase.containsKey(qText)) {
+            choice = masterDatabase.get(qText);
+            System.out.println("📝 Q" + i + " [Memory]: " + choice);
+        } else {
+            // Your AI logic here
+            choice = options.get(random.nextInt(options.size()));
+            System.out.println("📝 Q" + i + " [Random]: " + choice);
+        }
 
-        quizFrame.locator("button:has-text('Submit')").click();
+        // 4. Click with FORCE to prevent "Element is obscured" errors
+        try {
+            quizFrame.locator(".opt")
+                    .filter(new Locator.FilterOptions().setHasText(choice))
+                    .first()
+                    .click(new Locator.ClickOptions().setForce(true).setTimeout(3000));
+            
+            page.waitForTimeout(500);
+            
+            quizFrame.locator("button:has-text('Submit'), #submitBtn")
+                    .first()
+                    .click(new Locator.ClickOptions().setTimeout(3000));
+        } catch (Exception e) {
+            System.err.println("❌ Click failed for Q" + i);
+            throw e; // Push to the retry loop
+        }
     }
 
     private static void humanWait(Page page, int min, int max) {
