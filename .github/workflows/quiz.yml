@@ -3,7 +3,7 @@ name: Run Quiz Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 12 * * *"  # every day at 12:00 UTC
+    - cron: "0 12 * * *"
 
 jobs:
   run-bot:
@@ -36,14 +36,36 @@ jobs:
       - name: Compile tests
         run: mvn clean test-compile
 
+      - name: Set Account Secrets
+        id: account-secrets
+        run: |
+          echo "LOGIN_PHONE=$(case '${{ matrix.account }}' in
+            AS) echo '${{ secrets.LOGIN_PHONE_AS }}' ;;
+            MOS) echo '${{ secrets.LOGIN_PHONE_MOS }}' ;;
+            BEL) echo '${{ secrets.LOGIN_PHONE_BEL }}' ;;
+            ACC4) echo '${{ secrets.LOGIN_PHONE_ACC4 }}' ;;
+            ACC5) echo '${{ secrets.LOGIN_PHONE_ACC5 }}' ;;
+            *) echo '' ;;
+          esac)" >> $GITHUB_ENV
+
+          echo "LOGIN_PIN=$(case '${{ matrix.account }}' in
+            AS) echo '${{ secrets.LOGIN_PIN }}' ;;
+            MOS) echo '${{ secrets.LOGIN_PIN }}' ;;
+            BEL) echo '${{ secrets.LOGIN_PINL }}' ;;
+            ACC4) echo '${{ secrets.LOGIN_PIN }}' ;;
+            ACC5) echo '${{ secrets.LOGIN_PIN }}' ;;
+            *) echo '' ;;
+          esac)" >> $GITHUB_ENV
+
       - name: Run Quiz Bot
         env:
-          LOGIN_PHONE: ${{ secrets['LOGIN_PHONE_' + matrix.account] }}  # dynamic per account
-          LOGIN_PIN:   ${{ secrets['LOGIN_PIN_' + matrix.account] }}    # dynamic per account
-          LOGIN_LINK:  ${{ secrets.LOGIN_LINK }}                        # common secret
-          API_KEY:     ${{ secrets.API_KEY }}                           # common secret
-          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}               # common secret
-        run: mvn exec:java -Dexec.args="${{ matrix.account }}"           # pass account name as argument
+          LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
+          LOGIN_PIN: ${{ env.LOGIN_PIN }}
+          LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+          API_KEY: ${{ secrets.API_KEY }}
+          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
+        run: mvn exec:java -Dexec.args="${{ matrix.account }}"
+
 
 
 
