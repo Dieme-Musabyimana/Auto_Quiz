@@ -2,6 +2,27 @@ name: Run Quiz Bot
 
 on:
   workflow_dispatch:
+    inputs:
+      run_as:
+        description: 'Run Account AS'
+        type: boolean
+        default: true
+      run_mos:
+        description: 'Run Account MOS'
+        type: boolean
+        default: true
+      run_bel:
+        description: 'Run Account BEL'
+        type: boolean
+        default: true
+      run_acc4:
+        description: 'Run Account ACC4'
+        type: boolean
+        default: true
+      run_acc5:
+        description: 'Run Account ACC5'
+        type: boolean
+        default: true
   schedule:
     - cron: "0 12 * * *"
 
@@ -9,8 +30,23 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false 
       matrix:
-        account: [AS, MOS, BEL, ACC4, ACC5] # 5 accounts
+        include:
+          - account: AS
+            id: run_as
+          - account: MOS
+            id: run_mos
+          - account: BEL
+            id: run_bel
+          - account: ACC4
+            id: run_acc4
+          - account: ACC5
+            id: run_acc5
+
+    if: |
+      github.event_name == 'schedule' || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs[matrix.id] == 'true')
 
     steps:
       - name: Checkout repository
@@ -39,23 +75,25 @@ jobs:
       - name: Set Account Secrets
         id: account-secrets
         run: |
-          echo "LOGIN_PHONE=$(case '${{ matrix.account }}' in
-            AS) echo '${{ secrets.LOGIN_PHONE_AS }}' ;;
-            MOS) echo '${{ secrets.LOGIN_PHONE_MOS }}' ;;
-            BEL) echo '${{ secrets.LOGIN_PHONE_BEL }}' ;;
-            ACC4) echo '${{ secrets.LOGIN_PHONE_ACC4 }}' ;;
-            ACC5) echo '${{ secrets.LOGIN_PHONE_ACC5 }}' ;;
-            *) echo '' ;;
-          esac)" >> $GITHUB_ENV
-
-          echo "LOGIN_PIN=$(case '${{ matrix.account }}' in
-            AS) echo '${{ secrets.LOGIN_PIN }}' ;;
-            MOS) echo '${{ secrets.LOGIN_PIN }}' ;;
-            BEL) echo '${{ secrets.LOGIN_PINL }}' ;;
-            ACC4) echo '${{ secrets.LOGIN_PIN }}' ;;
-            ACC5) echo '${{ secrets.LOGIN_PIN }}' ;;
-            *) echo '' ;;
-          esac)" >> $GITHUB_ENV
+          case "${{ matrix.account }}" in
+            AS)
+              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV
+              ;;
+            MOS)
+              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV
+              ;;
+            BEL)
+              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV
+              ;;
+            ACC4)
+              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC4 }}" >> $GITHUB_ENV
+              ;;
+            ACC5)
+              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC5 }}" >> $GITHUB_ENV
+              ;;
+          esac
+          # All accounts now use the same PIN secret correctly
+          echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
 
       - name: Run Quiz Bot
         env:
@@ -64,8 +102,7 @@ jobs:
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
           API_KEY: ${{ secrets.API_KEY }}
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
-        run: mvn exec:java -Dexec.args="${{ matrix.account }}"
-
+        run: mvn exec:java -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
 
 
 
