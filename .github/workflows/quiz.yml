@@ -34,7 +34,7 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     strategy:
-      # CRITICAL: This allows you to stop one account without killing the rest
+      # Allows you to stop one job without killing the rest
       fail-fast: false 
       matrix:
         include:
@@ -75,6 +75,10 @@ jobs:
         if: steps.check_selection.outputs.should_run == 'true'
         run: npx playwright install --with-deps
 
+      - name: Compile tests
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: mvn clean test-compile
+
       - name: Set Account Secrets
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
@@ -82,7 +86,7 @@ jobs:
             AS)   echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV ;;
             MOS)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV ;;
             BEL)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV ;;
-            DI)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV ;;
+            DI)   echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV ;;
             ACC4) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC4 }}" >> $GITHUB_ENV ;;
             ACC5) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC5 }}" >> $GITHUB_ENV ;;
           esac
@@ -96,7 +100,8 @@ jobs:
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
           API_KEY: ${{ secrets.API_KEY }}
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
-        run: mvn exec:java -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
+        # Added classpathScope="test" so Maven can find your DoQuizTest class
+        run: mvn exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
 
 
 # name: Run Quiz Bot
