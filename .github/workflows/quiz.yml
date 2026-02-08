@@ -51,12 +51,11 @@ jobs:
       - name: Check if account should run
         id: check_selection
         run: |
-          # If scheduled, always run. If manual, check the checkbox value.
           if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
           else
             echo "should_run=false" >> $GITHUB_OUTPUT
-            echo "Skipping ${{ matrix.account }} as it was not selected."
+            echo "Skipping ${{ matrix.account }} based on user selection."
           fi
 
       - name: Set up Java
@@ -87,9 +86,9 @@ jobs:
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
           case "${{ matrix.account }}" in
-            AS) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV ;;
-            MOS) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV ;;
-            BEL) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV ;;
+            AS)   echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV ;;
+            MOS)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV ;;
+            BEL)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV ;;
             ACC4) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC4 }}" >> $GITHUB_ENV ;;
             ACC5) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC5 }}" >> $GITHUB_ENV ;;
           esac
