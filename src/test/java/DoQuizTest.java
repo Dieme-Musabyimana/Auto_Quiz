@@ -219,8 +219,29 @@ public class DoQuizTest {
         page.waitForTimeout(random.nextInt(max - min + 1) + min);
     }
 
-    private static void saveData() {}
-    private static void loadData() {}
+        private static void saveData() {
+        try (Writer writer = new FileWriter(DATA_FILE)) {
+            Map<String, Object> data = new HashMap<>();
+            data.put("database", masterDatabase);
+            data.put("totalMarks", totalMarksGained);
+            new Gson().toJson(data, writer);
+        } catch (IOException ignored) {}
+    }
+
+    private static void loadData() {
+        try {
+            File file = new File(DATA_FILE);
+            if (file.exists()) {
+                Reader reader = new FileReader(file);
+                Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
+                if (data != null) {
+                    if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
+                    if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
+                }
+                System.out.println("📂 Memory Loaded: " + masterDatabase.size());
+            }
+        } catch (Exception ignored) {}
+    }
 }
 
 
