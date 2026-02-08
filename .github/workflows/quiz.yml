@@ -31,6 +31,31 @@ on:
         description: 'Run Account SAM'
         type: boolean
         default: false
+      run_na:
+        description: 'Run Account NA'
+        type: boolean
+        default: false
+      run_da:
+        description: 'Run Account DA'
+        type: boolean
+        default: false
+      run_mu:
+        description: 'Run Account MUM'
+        type: boolean
+        default: false
+      run_jon:
+        description: 'Run Account JON'
+        type: boolean
+        default: false
+      run_pie:
+        description: 'Run Account PIE'
+        type: boolean
+        default: false
+      run_th:
+        description: 'Run Account TH'
+        type: boolean
+        default: false
+      
   # schedule:
   #   - cron: "0 12 * * *"
 
@@ -56,7 +81,16 @@ jobs:
             id: run_pat
           - account: SAM
             id: run_sam
-          
+          - account: NA
+            id: run_NA
+          - account: DA
+            id: run_da
+          - account: MUM
+            id: run_mum   
+          - account: JON
+            id: run_jon
+          - account: TH
+            id: run_th
 
     steps:
       - name: Checkout repository
@@ -97,6 +131,11 @@ jobs:
             DIEU) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV ;;
             PAT)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV ;;
             SAM)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV ;;
+            NA)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_NA}}" >> $GITHUB_ENV ;;
+            DA)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DA }}" >> $GITHUB_ENV ;;
+            MUM)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MUM }}" >> $GITHUB_ENV ;;
+            JON)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_JON }}" >> $GITHUB_ENV ;;
+            TH)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_TH }}" >> $GITHUB_ENV ;;
 
            
           esac
