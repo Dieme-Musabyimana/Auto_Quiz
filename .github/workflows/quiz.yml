@@ -46,14 +46,11 @@ jobs:
             id: run_bel
           - account: DI
             id: run_di
-          - account: ACC4
-            id: run_acc4
-          - account: ACC5
-            id: run_acc5
           - account: DIEU
             id: run_dieu
           - account: PAT
             id: run_pat
+          
 
     steps:
       - name: Checkout repository
@@ -91,12 +88,9 @@ jobs:
             MOS)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV ;;
             BEL)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV ;;
             DI)   echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV ;;
-            ACC4) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC4 }}" >> $GITHUB_ENV ;;
-            ACC5) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC5 }}" >> $GITHUB_ENV ;;
-            ACC5) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV ;;
-            ACC5) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV ;;
-
-
+            DIEU) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV ;;
+            PAT)  echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV ;;
+           
           esac
           echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
 
