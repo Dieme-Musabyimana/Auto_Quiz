@@ -85,12 +85,13 @@ public class DoQuizTest {
                                     totalMarksGained + " | MEMORY: " + masterDatabase.size()
                     );
 
+                    // +++ ADDED/UPDATED START +++
+                    // Navigate first to check if we are already logged in
+                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index",
+                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    
                     page = loginIfNeeded(page, context, profileName);
-
-                    page.navigate(
-                            "https://www.iwacusoft.com/ubumenyibwanjye/index",
-                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-                    );
+                    // +++ ADDED/UPDATED END +++
 
                     Locator startBtn;
                     try {
@@ -165,9 +166,9 @@ public class DoQuizTest {
     private static Page loginIfNeeded(Page page, BrowserContext context, String profileName) {
         try {
             // +++ ADDED/UPDATED START +++
-            // Optimization: If START EARN button is already visible, we are logged in.
+            // Check if START EARN is visible. If it is, we are already logged in via state/session.
             if (page.locator("button:has-text('START EARN')").isVisible()) {
-                System.out.println("✅ Session already active for " + profileName);
+                System.out.println("✅ Session already active for " + profileName + ". Bypassing login.");
                 return page;
             }
             // +++ ADDED/UPDATED END +++
@@ -175,7 +176,6 @@ public class DoQuizTest {
             Locator phoneInput = page.locator("input[placeholder*='Phone']");
             if (phoneInput.isVisible()) {
                 // +++ ADDED/UPDATED START +++
-                // Checks for account-specific env first (e.g., LOGIN_PHONE_AS), then falls back to default
                 String accountKey = profileName.toUpperCase();
                 String phoneEnv = System.getenv("LOGIN_PHONE_" + accountKey);
                 if (phoneEnv == null) phoneEnv = System.getenv("LOGIN_PHONE");
@@ -185,7 +185,7 @@ public class DoQuizTest {
                 // +++ ADDED/UPDATED END +++
 
                 if (phoneEnv == null || pinEnv == null || phoneEnv.isEmpty() || pinEnv.isEmpty()) {
-                    System.out.println("⚠️ No login credentials for " + profileName + ". Skipping login.");
+                    System.out.println("⚠️ No credentials provided for " + profileName + ". Waiting...");
                     return page;
                 }
 
@@ -194,34 +194,29 @@ public class DoQuizTest {
                 page.click("//button[contains(., 'Log in')]");
                 page.waitForURL("**/index", new Page.WaitForURLOptions().setTimeout(10000));
 
-                context.storageState(
-                        new BrowserContext.StorageStateOptions()
-                                .setPath(Paths.get("state_" + profileName + ".json"))
-                );
-                System.out.println("✅ Login successful and state saved for: " + profileName);
+                // +++ ADDED/UPDATED START +++
+                // Save the session state after successful manual login
+                context.storageState(new BrowserContext.StorageStateOptions()
+                        .setPath(Paths.get("state_" + profileName + ".json")));
+                System.out.println("💾 State saved for account: " + profileName);
+                // +++ ADDED/UPDATED END +++
             }
         } catch (Exception e) {
-            System.err.println("❌ Login failed for account: " + profileName + " | " + e.getMessage());
+            System.err.println("❌ Login failed: " + e.getMessage());
         }
         return page;
     }
 
     private static void hardRestart(Page page) {
         lastProcessedQuestion = "";
-        System.out.println("🔁 Restarting quiz from beginning...");
+        System.out.println("🔁 Restarting quiz...");
         try {
-            page.navigate(
-                    "https://www.iwacusoft.com/ubumenyibwanjye/index",
-                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-            );
-        } catch (Exception e) {
-            System.err.println("❌ Failed to navigate during hard restart: " + e.getMessage());
-        }
+            page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
+        } catch (Exception ignored) {}
     }
 
     private static void humanWait(Page page, int min, int max) {
-        int delay = random.nextInt(max - min + 1) + min;
-        page.waitForTimeout(delay);
+        page.waitForTimeout(random.nextInt(max - min + 1) + min);
     }
 
     private static void saveData() {
@@ -243,17 +238,63 @@ public class DoQuizTest {
                     if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
                     if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
                 }
-                System.out.println("📂 Memory Loaded: " + masterDatabase.size());
             }
         } catch (Exception ignored) {}
     }
 
-    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i, long questionStartTime) throws Exception {
-        // [Existing processing logic remains the same]
-        // ... (truncated for brevity but keep your existing code here)
+    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i, long startTime) throws Exception {
+        int cycles = 0;
+        String qText = "";
+        while (cycles < 50) {
+            try {
+                qText = quizFrame.locator("#qTitle").innerText().trim();
+                if (!qText.isEmpty() && !qText.contains("Loading") && !qText.equals(lastProcessedQuestion)) break;
+            } catch (Exception ignored) {}
+            page.waitForTimeout(200);
+            cycles++;
+        }
+
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) throw new Exception("Question load failed");
+        lastProcessedQuestion = qText;
+
+        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
+        options.removeIf(String::isEmpty);
+
+        String finalChoice;
+        if (masterDatabase.containsKey(qText)) {
+            finalChoice = masterDatabase.get(qText);
+        } else {
+            StringBuilder sb = new StringBuilder("Question: ").append(qText).append("\nOptions:\n");
+            for (int idx = 0; idx < options.size(); idx++) sb.append(idx+1).append(") ").append(options.get(idx)).append("\n");
+            sb.append("Respond with the NUMBER of the correct option only.");
+
+            String aiResponse = ai.askAI(sb.toString()).replaceAll("[^0-9]", "").trim();
+            int choiceIndex = 0;
+            try {
+                int num = Integer.parseInt(aiResponse);
+                choiceIndex = (num >= 1 && num <= options.size()) ? num - 1 : random.nextInt(options.size());
+            } catch (Exception e) { choiceIndex = random.nextInt(options.size()); }
+            finalChoice = options.get(choiceIndex);
+        }
+
+        quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first().click();
+        humanWait(page, 500, 1000);
+        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+        page.waitForTimeout(500);
+
+        try {
+            String res = quizFrame.locator("#lastBody").innerText();
+            if (res.contains("Correct:")) {
+                int correctIdx = res.split("Correct:")[1].trim().charAt(0) - 'A';
+                if (correctIdx >= 0 && correctIdx < options.size()) {
+                    masterDatabase.put(qText, options.get(correctIdx));
+                    if (finalChoice.equalsIgnoreCase(options.get(correctIdx))) totalMarksGained++;
+                    saveData();
+                }
+            }
+        } catch (Exception ignored) {}
     }
 }
-
 
 
 // import com.microsoft.playwright.*;
