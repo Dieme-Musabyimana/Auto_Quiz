@@ -1,0 +1,67 @@
+name: SAM Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_as:
+        description: 'Run Account SAM'
+        type: boolean
+        default: false
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    strategy:
+      # Allows you to stop one job without killing the rest
+      fail-fast: false 
+      matrix:
+        include:
+          - account: SAM
+            id: run_sam
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check if account should run
+        id: check_selection
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Java
+        if: steps.check_selection.outputs.should_run == 'true'
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Playwright
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: npx playwright install --with-deps
+
+      - name: Compile tests
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: mvn clean test-compile
+
+      - name: Set Account Secrets
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: |
+          case "${{ matrix.account }}" in
+            SAM)   echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV ;;
+           
+           
+          esac
+          echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+
+      - name: Run Quiz Bot
+        if: steps.check_selection.outputs.should_run == 'true'
+        env:
+          LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
+          LOGIN_PIN: ${{ env.LOGIN_PIN }}
+          LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+          API_KEY: ${{ secrets.API_KEY }}
+          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
+        # Added classpathScope="test" so Maven can find your DoQuizTest class
+        run: mvn exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
