@@ -110,46 +110,48 @@ public class DoQuizTest {
     }
 
     // ================= LOGIN PER ACCOUNT =================
-    private static void loginIfNeeded(Page page,
-                                     BrowserContext context,
-                                     String account,
-                                     Path statePath) {
+   private static void loginIfNeeded(Page page,
+                                 BrowserContext context,
+                                 String account,
+                                 Path statePath) {
 
-        try {
-            page.waitForTimeout(2000);
+    try {
+        page.waitForTimeout(2000);
 
-            if (page.locator("button:has-text('START EARN')").isVisible()) {
-                System.out.println("✅ Already logged in: " + account);
-                return;
-            }
-
-            Locator phoneInput = page.locator("input[placeholder*='Phone']");
-            if (!phoneInput.isVisible()) return;
-
-            String phone = System.getenv("LOGIN_PHONE_" + account);
-            String pin   = System.getenv("LOGIN_PIN_" + account);
-
-            if (phone == null || pin == null) {
-                throw new RuntimeException("Missing secrets for " + account);
-            }
-
-            phoneInput.fill(phone);
-            page.locator("input[placeholder*='PIN']").fill(pin);
-            page.click("//button[contains(., 'Log in')]");
-
-            page.waitForURL("**/index",
-                    new Page.WaitForURLOptions().setTimeout(15000));
-
-            context.storageState(
-                    new BrowserContext.StorageStateOptions().setPath(statePath)
-            );
-
-            System.out.println("💾 Login saved for " + account);
-
-        } catch (Exception e) {
-            System.err.println("❌ Login failed for " + account + ": " + e.getMessage());
+        if (page.locator("button:has-text('START EARN')").isVisible()) {
+            System.out.println("✅ Already logged in: " + account);
+            return;
         }
+
+        Locator phoneInput = page.locator("input[placeholder*='Phone']");
+        if (!phoneInput.isVisible()) return;
+
+        // ✅ READ NORMALIZED ENV VARS SET BY YAML
+        String phone = System.getenv("LOGIN_PHONE");
+        String pin   = System.getenv("LOGIN_PIN");
+
+        if (phone == null || pin == null) {
+            throw new RuntimeException("Missing secrets for " + account);
+        }
+
+        phoneInput.fill(phone);
+        page.locator("input[placeholder*='PIN']").fill(pin);
+        page.click("//button[contains(., 'Log in')]");
+
+        page.waitForURL("**/index",
+                new Page.WaitForURLOptions().setTimeout(15000));
+
+        context.storageState(
+                new BrowserContext.StorageStateOptions().setPath(statePath)
+        );
+
+        System.out.println("💾 Login saved for " + account);
+
+    } catch (Exception e) {
+        System.err.println("❌ Login failed for " + account + ": " + e.getMessage());
     }
+}
+
 
     // ================= QUESTION LOGIC (UNCHANGED) =================
     private static void processQuestion(FrameLocator quizFrame,
