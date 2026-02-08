@@ -40,7 +40,7 @@ on:
         type: boolean
         default: false
       run_mu:
-        description: 'Run Account MUM'
+        description: 'Run Account MU'
         type: boolean
         default: false
       run_jon:
@@ -85,8 +85,8 @@ jobs:
             id: run_NA
           - account: DA
             id: run_da
-          - account: MUM
-            id: run_mum   
+          - account: MU
+            id: run_mu   
           - account: JON
             id: run_jon
           - account: TH
