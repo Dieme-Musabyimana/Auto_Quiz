@@ -18,17 +18,20 @@ public class DoQuizTest {
     private static int totalMarksGained = 0;
     private static final Random random = new Random();
     private static final int MAX_RETRIES = 2;
+    private static final int QUESTION_TIMEOUT_MS = 10000;
 
     public static void main(String[] args) throws IOException {
 
         loadData();
         int totalQuestions = 90;
 
+        // ------------------ MULTI-ACCOUNT SUPPORT ------------------
         String profileName = args.length > 0 ? args[0] : "acc_default";
         Path userDataDir = Paths.get("profiles", profileName);
 
         if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
-        System.out.println("👤 Using profile: " + profileName);
+        System.out.println("👤 Using profile: " + profileName + " → folder: " + userDataDir.toAbsolutePath());
+        // ------------------------------------------------------------
 
         try (Playwright playwright = Playwright.create()) {
 
@@ -43,69 +46,119 @@ public class DoQuizTest {
                                     "--start-maximized"
                             ))
                             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-                            .setViewportSize(1920, 800);
+                            .setViewportSize(1920, 800)
+                            .setSlowMo(0);
 
-            // Create the context first
             BrowserContext context = playwright.chromium().launchPersistentContext(userDataDir, options);
-            
-            // +++ FIXED STATE LOADING +++
+
+            // +++ SESSION LOADING LOGIC +++
             Path statePath = Paths.get("state_" + profileName + ".json");
             if (Files.exists(statePath)) {
                 System.out.println("📂 Loading session state: " + statePath);
-                // We don't set it in options; we grant it to the context
                 context.storageState(new BrowserContext.StorageStateOptions().setPath(statePath));
             }
+
+            context.addInitScript(
+                    "() => {" +
+                            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
+                            "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});" +
+                            "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});" +
+                            "window.chrome={runtime:{}};" +
+                            "}"
+            );
 
             Page page = context.pages().get(0);
             GroqService ai = new GroqService();
 
+            System.out.println("✅ Initialization done for account: " + profileName);
+
+            // ==================== SAFETY LOOP START ====================
             while (true) {
                 try {
+                    System.out.println("\n📊 [" + new Date() + "] STATS | MARKS: " + totalMarksGained + " | MEMORY: " + masterDatabase.size());
+
+                    // Navigate first to check login status
                     page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index",
                             new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-                    
+
+                    // Unified Login Logic
                     page = loginIfNeeded(page, context, profileName);
 
-                    Locator startBtn = page.locator("button:has-text('START EARN')");
-                    startBtn.waitFor(new Locator.WaitForOptions().setTimeout(10000));
-                    startBtn.click();
+                    Locator startBtn;
+                    try {
+                        startBtn = page.locator("button:has-text('START EARN')");
+                        startBtn.waitFor(new Locator.WaitForOptions().setTimeout(10000));
+                        startBtn.click();
+                    } catch (Exception e) {
+                        System.err.println("❌ Failed to click START EARN: " + e.getMessage());
+                        hardRestart(page);
+                        continue;
+                    }
 
+                    // Quiz Setup
                     page.locator("#subcategory-3").waitFor();
                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
                     page.click("//button[contains(text(),'START')]");
 
-                    FrameLocator quizFrame = page.frameLocator("#iframeId");
                     int currentQuestion = 1;
-
                     while (currentQuestion <= totalQuestions) {
-                        try {
-                            processQuestion(quizFrame, page, ai, currentQuestion);
+                        boolean success = false;
+                        int attempt = 0;
+                        long questionStartTime = System.currentTimeMillis();
+
+                        while (!success && attempt < MAX_RETRIES) {
+                            attempt++;
+                            try {
+                                FrameLocator quizFrameRetry;
+                                while (true) {
+                                    try {
+                                        quizFrameRetry = page.frameLocator("#iframeId");
+                                        quizFrameRetry.locator("#qTitle")
+                                                .waitFor(new Locator.WaitForOptions().setTimeout(5000));
+                                        break;
+                                    } catch (PlaywrightException e) {
+                                        System.out.println("⚠️ Waiting for quiz frame... retrying in 5s");
+                                        page.waitForTimeout(5000);
+                                    }
+                                }
+                                processQuestion(quizFrameRetry, page, ai, currentQuestion, questionStartTime);
+                                success = true;
+                                currentQuestion++;
+                            } catch (Exception e) {
+                                System.err.println("⚠️ Retry Q" + currentQuestion + " attempt " + attempt + " | " + e.getMessage());
+                                page.waitForTimeout(3000);
+                            }
+                        }
+
+                        if (!success) {
+                            System.err.println("❌ Q" + currentQuestion + " skipped after retries.");
                             currentQuestion++;
-                        } catch (Exception e) {
-                            System.err.println("⚠️ Q" + currentQuestion + " error: " + e.getMessage());
-                            page.waitForTimeout(2000);
                         }
                     }
 
                     saveData();
-                    humanWait(page, 2000, 4000);
+                    System.out.println("🏁 Batch finished. Sleeping briefly...");
+                    humanWait(page, 1500, 3000);
 
                 } catch (Exception e) {
                     System.err.println("🔄 Main loop error: " + e.getMessage());
                     hardRestart(page);
+                    continue;
                 }
+                humanWait(page, 2000, 3500);
             }
+        } catch (Exception e) {
+            System.err.println("❌ Playwright initialization failed: " + e.getMessage());
         }
     }
 
     private static Page loginIfNeeded(Page page, BrowserContext context, String profileName) {
         try {
-            // Give the page a second to see if the session is already active
-            page.waitForTimeout(2000);
+            // Check if START EARN is already visible (means we are logged in)
             if (page.locator("button:has-text('START EARN')").isVisible()) {
-                System.out.println("✅ " + profileName + " already logged in.");
+                System.out.println("✅ Session already active for " + profileName + ". Bypassing login.");
                 return page;
             }
 
@@ -114,7 +167,14 @@ public class DoQuizTest {
                 String accountKey = profileName.toUpperCase();
                 String phoneEnv = System.getenv("LOGIN_PHONE_" + accountKey);
                 if (phoneEnv == null) phoneEnv = System.getenv("LOGIN_PHONE");
-                String pinEnv = System.getenv("LOGIN_PIN"); // Using your shared PIN logic
+                
+                String pinEnv = System.getenv("LOGIN_PIN_" + accountKey);
+                if (pinEnv == null) pinEnv = System.getenv("LOGIN_PIN");
+
+                if (phoneEnv == null || pinEnv == null || phoneEnv.isEmpty() || pinEnv.isEmpty()) {
+                    System.out.println("⚠️ No credentials provided for " + profileName);
+                    return page;
+                }
 
                 phoneInput.fill(phoneEnv);
                 page.locator("input[placeholder*='PIN']").fill(pinEnv);
@@ -124,48 +184,80 @@ public class DoQuizTest {
                 // Save session for next time
                 context.storageState(new BrowserContext.StorageStateOptions()
                         .setPath(Paths.get("state_" + profileName + ".json")));
-                System.out.println("💾 Saved state for " + profileName);
+                System.out.println("💾 State saved for account: " + profileName);
             }
         } catch (Exception e) {
-            System.err.println("❌ Login failed/not needed: " + e.getMessage());
+            System.err.println("❌ Login failed for account: " + profileName + " | " + e.getMessage());
         }
         return page;
     }
 
-    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
-        quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(10000));
-        String qText = quizFrame.locator("#qTitle").innerText().trim();
-        
+    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i, long questionStartTime) throws Exception {
+        int cycles = 0;
+        String qText = "";
+
+        while (cycles < QUESTION_TIMEOUT_MS / 200) {
+            try {
+                qText = quizFrame.locator("#qTitle").innerText().trim();
+                if (!qText.isEmpty() && !qText.contains("Loading") && !qText.equals(lastProcessedQuestion)) break;
+            } catch (Exception ignored) {}
+            page.waitForTimeout(200);
+            cycles++;
+        }
+
+        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) throw new Exception("Question not loaded properly");
+        lastProcessedQuestion = qText;
+
         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
         options.removeIf(String::isEmpty);
+
+        if (options.isEmpty()) throw new Exception("No answer options loaded");
 
         String finalChoice;
         if (masterDatabase.containsKey(qText)) {
             finalChoice = masterDatabase.get(qText);
+            System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
         } else {
-            StringBuilder sb = new StringBuilder(qText + "\n");
-            for(int idx=0; idx<options.size(); idx++) sb.append(idx+1).append(") ").append(options.get(idx)).append("\n");
-            String aiRes = ai.askAI(sb.toString()).replaceAll("[^0-9]", "").trim();
-            int choiceIdx = Integer.parseInt(aiRes) - 1;
-            finalChoice = options.get(choiceIdx);
+            StringBuilder sb = new StringBuilder("Question: ").append(qText).append("\nOptions:\n");
+            for (int idx = 0; idx < options.size(); idx++) sb.append(idx + 1).append(") ").append(options.get(idx)).append("\n");
+            sb.append("Respond with the exact NUMBER of the correct option only.");
+
+            String aiResponse = ai.askAI(sb.toString()).replaceAll("[^0-9]", "").trim();
+            int choiceIndex;
+            try {
+                int number = Integer.parseInt(aiResponse);
+                choiceIndex = (number >= 1 && number <= options.size()) ? number - 1 : random.nextInt(options.size());
+            } catch (Exception e) { choiceIndex = random.nextInt(options.size()); }
+            finalChoice = options.get(choiceIndex);
+            System.out.println("📝 Q" + i + " [AI] Chose: " + finalChoice);
         }
 
         quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first().click();
-        quizFrame.locator("button:has-text('Submit')").click();
-        
+        humanWait(page, 500, 1000);
+        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+        page.waitForTimeout(500);
+
         try {
-            String res = quizFrame.locator("#lastBody").innerText();
-            if (res.contains("Correct:")) {
-                int correctIdx = res.split("Correct:")[1].trim().charAt(0) - 'A';
-                masterDatabase.put(qText, options.get(correctIdx));
-                saveData();
+            String resultText = quizFrame.locator("#lastBody").innerText();
+            if (resultText.contains("Correct:")) {
+                String correctLetter = resultText.split("Correct:")[1].trim().substring(0, 1);
+                int correctIndex = correctLetter.charAt(0) - 'A';
+                if (correctIndex >= 0 && correctIndex < options.size()) {
+                    String actualAns = options.get(correctIndex);
+                    masterDatabase.put(qText, actualAns);
+                    if (finalChoice.equalsIgnoreCase(actualAns)) totalMarksGained++;
+                    saveData();
+                }
             }
         } catch (Exception ignored) {}
     }
 
     private static void hardRestart(Page page) {
         lastProcessedQuestion = "";
-        page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
+        System.out.println("🔁 Restarting quiz...");
+        try {
+            page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
+        } catch (Exception ignored) {}
     }
 
     private static void humanWait(Page page, int min, int max) {
@@ -187,13 +279,17 @@ public class DoQuizTest {
             if (file.exists()) {
                 Reader reader = new FileReader(file);
                 Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
-                if (data != null && data.get("database") != null) {
-                    masterDatabase = (Map<String, String>) data.get("database");
+                if (data != null) {
+                    if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
+                    if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
                 }
+                System.out.println("📂 Memory Loaded: " + masterDatabase.size());
             }
         } catch (Exception ignored) {}
     }
 }
+
+
 // import com.microsoft.playwright.*;
 // import com.microsoft.playwright.options.*;
 // import page.GroqService;
