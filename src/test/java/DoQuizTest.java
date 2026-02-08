@@ -1,3 +1,4 @@
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import page.GroqService;
@@ -12,6 +13,7 @@ import java.util.*;
 
 public class DoQuizTest {
 
+    // ==================== FIELDS ====================
     private static String lastProcessedQuestion = "";
     private static Map<String, String> masterDatabase = new HashMap<>();
     private static final String DATA_FILE = "statistics.json";
@@ -20,37 +22,22 @@ public class DoQuizTest {
     private static final int MAX_RETRIES = 2;
     private static final int QUESTION_TIMEOUT_MS = 10000;
 
-    // ==================== HARD RESTART FUNCTION ====================
-    private static void hardRestart(Page page) {
-        lastProcessedQuestion = "";
-        System.out.println("🔁 Restarting quiz from beginning...");
-        try {
-            page.navigate(
-                    "https://www.iwacusoft.com/ubumenyibwanjye/index",
-                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
-            );
-        } catch (Exception e) {
-            System.err.println("❌ Failed to navigate during hard restart: " + e.getMessage());
-        }
-    }
-
-    public static void main(String[] args) {
+    // ==================== MAIN METHOD ====================
+    public static void main(String[] args) throws IOException {
 
         loadData();
         int totalQuestions = 90;
 
-        // ==================== MULTI-ACCOUNT SUPPORT ====================
-        // Check if an account name/profile is passed as argument
-        String profileName = args.length > 0 ? args[0] : "acc_default"; // <--- Added: Profile name from args
-        Path userDataDir = Paths.get("profiles", profileName);           // <--- Added: separate folder per account
+        // ------------------ MULTI-ACCOUNT SUPPORT ------------------
+        // Get profile name from arguments; default to "acc_default"
+        String profileName = args.length > 0 ? args[0] : "acc_default";
+        Path userDataDir = Paths.get("profiles", profileName); // Each account gets its own folder
+
+        // Ensure profile folder exists
+        if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
+        // ------------------------------------------------------------
 
         try (Playwright playwright = Playwright.create()) {
-
-            try {
-                if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
-            } catch (IOException e) {
-                System.err.println("❌ Could not create profile directory: " + e.getMessage());
-            }
 
             BrowserType.LaunchPersistentContextOptions options =
                     new BrowserType.LaunchPersistentContextOptions()
@@ -70,9 +57,9 @@ public class DoQuizTest {
                             .setViewportSize(1920, 800)
                             .setSlowMo(0);
 
-            // ==================== LOAD PERSISTENT CONTEXT PER ACCOUNT ====================
+            // ------------------ LOAD PERSISTENT CONTEXT PER ACCOUNT ------------------
             BrowserContext context =
-                    playwright.chromium().launchPersistentContext(userDataDir, options); // <--- Modified for multi-account
+                    playwright.chromium().launchPersistentContext(userDataDir, options); // Uses separate folder per account
 
             context.addInitScript(
                     "() => {" +
@@ -186,7 +173,21 @@ public class DoQuizTest {
         }
     }
 
-    // ==================== Login Method ====================
+    // ==================== HARD RESTART FUNCTION ====================
+    private static void hardRestart(Page page) {
+        lastProcessedQuestion = "";
+        System.out.println("🔁 Restarting quiz from beginning...");
+        try {
+            page.navigate(
+                    "https://www.iwacusoft.com/ubumenyibwanjye/index",
+                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+            );
+        } catch (Exception e) {
+            System.err.println("❌ Failed to navigate during hard restart: " + e.getMessage());
+        }
+    }
+
+    // ==================== LOGIN METHOD ====================
     private static Page loginIfNeeded(Page page, BrowserContext context) {
         try {
             Locator phoneInput = page.locator("input[placeholder*='Phone']");
@@ -206,13 +207,13 @@ public class DoQuizTest {
         return page;
     }
 
-    // ==================== Human Wait ====================
+    // ==================== HUMAN WAIT ====================
     private static void humanWait(Page page, int min, int max) {
         int delay = random.nextInt(max - min + 1) + min;
         page.waitForTimeout(delay);
     }
 
-    // ==================== Save Data ====================
+    // ==================== SAVE DATA ====================
     private static void saveData() {
         try (Writer writer = new FileWriter(DATA_FILE)) {
             Map<String, Object> data = new HashMap<>();
@@ -222,7 +223,7 @@ public class DoQuizTest {
         } catch (IOException ignored) {}
     }
 
-    // ==================== Load Data ====================
+    // ==================== LOAD DATA ====================
     private static void loadData() {
         try {
             File file = new File(DATA_FILE);
@@ -245,7 +246,7 @@ public class DoQuizTest {
         } catch (Exception ignored) {}
     }
 
-    // ==================== processQuestion METHOD ====================
+    // ==================== PROCESS QUESTION ====================
     private static void processQuestion(
             FrameLocator quizFrame,
             Page page,
@@ -369,7 +370,6 @@ public class DoQuizTest {
     }
 
 }
-
 
 
 // import com.microsoft.playwright.*;
