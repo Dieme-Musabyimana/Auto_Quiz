@@ -1,16 +1,17 @@
-name: Run Quiz Bot Multiple Accounts
+name: Run Quiz Bot
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 12 * * *"  # every day at 12:00 UTC
+    - cron: "0 12 * * *"
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        account: [acc_1, acc_2, acc_3] # ✅ Add as many profiles/accounts as you want
+        account: [AS, MOS, BEL, ACC4, ACC5] # 5 accounts
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -37,12 +38,13 @@ jobs:
 
       - name: Run Quiz Bot
         env:
-          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE }}
-          LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
+          LOGIN_PHONE: ${{ secrets['LOGIN_PHONE_' + matrix.account] }}
+          LOGIN_PIN: ${{ secrets['LOGIN_PIN_' + matrix.account] }}
           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
           API_KEY: ${{ secrets.API_KEY }}
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
-        run: mvn exec:java -Dexec.args="${{ matrix.account }}" # ✅ Pass the profile name
+        run: mvn exec:java -Dexec.args="${{ matrix.account }}" # pass account as argument
+
 
 
 
