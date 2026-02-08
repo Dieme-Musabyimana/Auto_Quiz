@@ -1,3 +1,4 @@
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import page.GroqService;
@@ -53,11 +54,11 @@ public class DoQuizTest {
                             .setSlowMo(0);
 
             // +++ ADDED/UPDATED START +++
-            // Check if a saved state exists first to resume session
+            // Fixed: use setStorageState(Path) for PersistentContext
             Path statePath = Paths.get("state_" + profileName + ".json");
             if (Files.exists(statePath)) {
                 System.out.println("📂 Loading existing session state: " + statePath);
-                options.setStorageStatePath(statePath);
+                options.setStorageState(statePath); 
             }
             // +++ ADDED/UPDATED END +++
 
@@ -295,8 +296,6 @@ public class DoQuizTest {
         } catch (Exception ignored) {}
     }
 }
-
-
 // import com.microsoft.playwright.*;
 // import com.microsoft.playwright.options.*;
 // import page.GroqService;
