@@ -15,8 +15,7 @@ public class DoQuizTest {
     private static final String DATA_FILE = "statistics.json";
     private static int totalMarksGained = 0;
     private static final Random random = new Random();
-    private static final int MAX_RETRIES = 2;
-    private static final int QUESTION_TIMEOUT_MS = 10000;
+    private static int roundsCompleted = 0; // 🔄 Tracks round number in console
 
     public static void main(String[] args) throws Exception {
 
@@ -53,7 +52,7 @@ public class DoQuizTest {
             BrowserContext context =
                     playwright.chromium().launchPersistentContext(profileDir, options);
 
-            // 🧠 Anti-bot
+            // 🧠 Anti-bot script
             context.addInitScript(
                     "() => {" +
                             "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
@@ -66,8 +65,13 @@ public class DoQuizTest {
             Page page = context.pages().get(0);
             GroqService ai = new GroqService();
 
+            // ================= MAIN INFINITE ROUND LOOP =================
             while (true) {
                 try {
+                    roundsCompleted++;
+                    System.out.println("\n***********************************************");
+                    System.out.println("🚀 STARTING ROUND #" + roundsCompleted + " FOR: " + account);
+                    System.out.println("***********************************************\n");
 
                     page.navigate(
                             "https://www.iwacusoft.com/ubumenyibwanjye/index",
@@ -76,6 +80,7 @@ public class DoQuizTest {
 
                     loginIfNeeded(page, context, account, statePath);
 
+                    // --- NAVIGATION & SELECTION ---
                     Locator startBtn = page.locator("button:has-text('START EARN')");
                     startBtn.waitFor();
                     startBtn.click();
@@ -88,116 +93,85 @@ public class DoQuizTest {
                     page.click("//button[contains(text(),'START')]");
 
                     FrameLocator quizFrame = page.frameLocator("#iframeId");
-                    int q = 1;
+                    
+                    // --- INTERNAL QUESTION LOOP ---
+                    boolean isRoundRunning = true;
+                    int qInThisRound = 0;
 
-                    // Replace your existing while(q <= totalQuestions) loop and processQuestion with this:
-
-                    while (q <= totalQuestions) {
+                    while (isRoundRunning) {
                         try {
-                            // Added a specific timeout so it doesn't hang forever
-                            processQuestion(quizFrame, page, ai, q);
-                            q++;
+                            // processQuestion returns false if "Quiz Finished" is detected
+                            isRoundRunning = processQuestion(quizFrame, page, ai);
+                            if (isRoundRunning) qInThisRound++;
                         } catch (Exception e) {
-                            System.err.println("⚠️ Q" + q + " failed or timed out. Retrying...");
-                            // If the iframe is stuck, sometimes a small scroll or click helps
-                            page.mouse().wheel(0, 100); 
+                            System.err.println("⚠️ UI Glitch in Round " + roundsCompleted + ". Attempting recovery...");
+                            page.mouse().wheel(0, 200); 
                             page.waitForTimeout(2000);
                             
-                            // Check if the quiz actually ended
-                            if (quizFrame.locator("text=Quiz Finished").isVisible()) break;
+                            // Check if the quiz ended during the glitch
+                            if (quizFrame.locator("text=Quiz Finished").isVisible() || 
+                                quizFrame.locator("button:has-text('Try Again')").isVisible()) {
+                                isRoundRunning = false;
+                            }
                         }
                     }
 
+                    System.out.println("\n✅ FINISHED ROUND #" + roundsCompleted);
+                    System.out.println("📊 Questions Answered: " + qInThisRound);
+                    
                     saveData();
-                    humanWait(page, 1500, 3000);
+                    humanWait(page, 3000, 6000); // Breathe before the next round selection
 
                 } catch (Exception e) {
-                    System.err.println("🔁 Restarting for " + account);
+                    System.err.println("🔁 Round " + roundsCompleted + " crashed. Restarting session...");
+                    page.waitForTimeout(5000);
                 }
             }
         }
     }
 
-    // ================= LOGIN PER ACCOUNT =================
-   private static void loginIfNeeded(Page page,
-                                 BrowserContext context,
-                                 String account,
-                                 Path statePath) {
-
-    try {
-        page.waitForTimeout(2000);
-
-        if (page.locator("button:has-text('START EARN')").isVisible()) {
-            System.out.println("✅ Already logged in: " + account);
-            return;
+    // ================= QUESTION LOGIC =================
+    private static boolean processQuestion(FrameLocator quizFrame, Page page, GroqService ai) throws Exception {
+        
+        // 1. END DETECTION: Check if the round is finished
+        if (quizFrame.locator("text=Quiz Finished").isVisible() || 
+            quizFrame.locator("text=Result").isVisible() ||
+            quizFrame.locator("button:has-text('Try Again')").isVisible()) {
+            return false; 
         }
 
-        Locator phoneInput = page.locator("input[placeholder*='Phone']");
-        if (!phoneInput.isVisible()) return;
-
-        // ✅ READ NORMALIZED ENV VARS SET BY YAML
-        String phone = System.getenv("LOGIN_PHONE");
-        String pin   = System.getenv("LOGIN_PIN");
-
-        if (phone == null || pin == null) {
-            throw new RuntimeException("Missing secrets for " + account);
-        }
-
-        phoneInput.fill(phone);
-        page.locator("input[placeholder*='PIN']").fill(pin);
-        page.click("//button[contains(., 'Log in')]");
-
-        page.waitForURL("**/index",
-                new Page.WaitForURLOptions().setTimeout(15000));
-
-        context.storageState(
-                new BrowserContext.StorageStateOptions().setPath(statePath)
-        );
-
-        System.out.println("💾 Login saved for " + account);
-
-    } catch (Exception e) {
-        System.err.println("❌ Login failed for " + account + ": " + e.getMessage());
-    }
-}
-
-
-    // ================= QUESTION LOGIC (UNCHANGED) =================
-    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i) throws Exception {
-        // 1. Give the question title a STRICT 5-second limit
+        // 2. WAIT for Question Title (5s timeout)
         Locator title = quizFrame.locator("#qTitle");
-        title.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+        try {
+            title.waitFor(new Locator.WaitForOptions().setTimeout(5000));
+        } catch (Exception e) {
+            return false; // If title doesn't appear, round likely ended
+        }
 
         String qText = title.innerText().trim();
         
-        // Prevent double-processing
+        // Anti-double-process check
         if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) {
             page.waitForTimeout(1000);
-            return; 
+            return true; 
         }
         lastProcessedQuestion = qText;
 
-        // 2. Ensure options are visible
-        Locator opts = quizFrame.locator(".opt .txt");
-        opts.first().waitFor(new Locator.WaitForOptions().setTimeout(3000));
-        
-        List<String> options = opts.allInnerTexts();
+        // 3. GET OPTIONS
+        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
         options.removeIf(String::isEmpty);
 
-        if (options.isEmpty()) throw new Exception("No options found");
+        if (options.isEmpty()) return true;
 
-        // 3. Choice Logic
-        String choice;
-        if (masterDatabase.containsKey(qText)) {
-            choice = masterDatabase.get(qText);
-            System.out.println("📝 Q" + i + " [Memory]: " + choice);
-        } else {
-            // Your AI logic here
-            choice = options.get(random.nextInt(options.size()));
-            System.out.println("📝 Q" + i + " [Random]: " + choice);
-        }
+        // 4. CHOOSE ANSWER (Memory first, then Random/AI)
+        String choice = masterDatabase.getOrDefault(qText, 
+                        options.get(random.nextInt(options.size())));
+        
+        System.out.println("📝 [R" + roundsCompleted + "] Q: " + 
+                           (qText.length() > 30 ? qText.substring(0, 30) + "..." : qText) + 
+                           " | Ans: " + choice);
 
-        // 4. Click with FORCE to prevent "Element is obscured" errors
+        // 5. CLICK & SUBMIT
         try {
             quizFrame.locator(".opt")
                     .filter(new Locator.FilterOptions().setHasText(choice))
@@ -210,22 +184,55 @@ public class DoQuizTest {
                     .first()
                     .click(new Locator.ClickOptions().setTimeout(3000));
         } catch (Exception e) {
-            System.err.println("❌ Click failed for Q" + i);
-            throw e; // Push to the retry loop
+            throw new Exception("Click Failed");
+        }
+
+        return true; 
+    }
+
+    // ================= LOGIN LOGIC =================
+    private static void loginIfNeeded(Page page, BrowserContext context, String account, Path statePath) {
+        try {
+            page.waitForTimeout(2000);
+            if (page.locator("button:has-text('START EARN')").isVisible()) {
+                System.out.println("✅ Already logged in: " + account);
+                return;
+            }
+
+            Locator phoneInput = page.locator("input[placeholder*='Phone']");
+            if (!phoneInput.isVisible()) return;
+
+            String phone = System.getenv("LOGIN_PHONE");
+            String pin   = System.getenv("LOGIN_PIN");
+
+            if (phone == null || pin == null) {
+                throw new RuntimeException("Missing secrets for " + account);
+            }
+
+            phoneInput.fill(phone);
+            page.locator("input[placeholder*='PIN']").fill(pin);
+            page.click("//button[contains(., 'Log in')]");
+
+            page.waitForURL("**/index", new Page.WaitForURLOptions().setTimeout(15000));
+            context.storageState(new BrowserContext.StorageStateOptions().setPath(statePath));
+            System.out.println("💾 Login saved for " + account);
+
+        } catch (Exception e) {
+            System.err.println("❌ Login failed for " + account + ": " + e.getMessage());
         }
     }
 
-    private static void humanWait(Page page, int min, int max) {
-        page.waitForTimeout(random.nextInt(max - min + 1) + min);
-    }
-
-        private static void saveData() {
+    // ================= DATA PERSISTENCE =================
+    private static void saveData() {
         try (Writer writer = new FileWriter(DATA_FILE)) {
             Map<String, Object> data = new HashMap<>();
             data.put("database", masterDatabase);
             data.put("totalMarks", totalMarksGained);
             new Gson().toJson(data, writer);
-        } catch (IOException ignored) {}
+            System.out.println("💾 Progress saved to disk.");
+        } catch (IOException e) {
+            System.err.println("❌ Failed to save data: " + e.getMessage());
+        }
     }
 
     private static void loadData() {
@@ -236,14 +243,21 @@ public class DoQuizTest {
                 Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
                 if (data != null) {
                     if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
-                    if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
+                    if (data.get("totalMarks") != null) {
+                        totalMarksGained = ((Double) data.get("totalMarks")).intValue();
+                    }
                 }
-                System.out.println("📂 Memory Loaded: " + masterDatabase.size());
+                System.out.println("📂 Memory Loaded. Database size: " + masterDatabase.size());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("⚠️ Could not load database. Starting fresh.");
+        }
+    }
+
+    private static void humanWait(Page page, int min, int max) {
+        page.waitForTimeout(random.nextInt(max - min + 1) + min);
     }
 }
-
 
 // import com.microsoft.playwright.*;
 // import com.microsoft.playwright.options.*;
