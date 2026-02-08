@@ -30,7 +30,7 @@ jobs:
   run-bot:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false 
+      fail-fast: false
       matrix:
         include:
           - account: AS
@@ -44,21 +44,30 @@ jobs:
           - account: ACC5
             id: run_acc5
 
-    if: |
-      github.event_name == 'schedule' || 
-      (github.event_name == 'workflow_dispatch' && github.event.inputs[matrix.id] == 'true')
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Check if account should run
+        id: check_selection
+        run: |
+          # If scheduled, always run. If manual, check the checkbox value.
+          if [[ "${{ github.event_name }}" == "schedule" ]] || [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "Skipping ${{ matrix.account }} as it was not selected."
+          fi
+
       - name: Set up Java
+        if: steps.check_selection.outputs.should_run == 'true'
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 21
 
       - name: Cache Maven dependencies
+        if: steps.check_selection.outputs.should_run == 'true'
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
@@ -67,35 +76,27 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Install Playwright browsers
+        if: steps.check_selection.outputs.should_run == 'true'
         run: npx playwright install --with-deps
 
       - name: Compile tests
+        if: steps.check_selection.outputs.should_run == 'true'
         run: mvn clean test-compile
 
       - name: Set Account Secrets
-        id: account-secrets
+        if: steps.check_selection.outputs.should_run == 'true'
         run: |
           case "${{ matrix.account }}" in
-            AS)
-              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV
-              ;;
-            MOS)
-              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV
-              ;;
-            BEL)
-              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV
-              ;;
-            ACC4)
-              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC4 }}" >> $GITHUB_ENV
-              ;;
-            ACC5)
-              echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC5 }}" >> $GITHUB_ENV
-              ;;
+            AS) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV ;;
+            MOS) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV ;;
+            BEL) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV ;;
+            ACC4) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC4 }}" >> $GITHUB_ENV ;;
+            ACC5) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_ACC5 }}" >> $GITHUB_ENV ;;
           esac
-          # All accounts now use the same PIN secret correctly
           echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
 
       - name: Run Quiz Bot
+        if: steps.check_selection.outputs.should_run == 'true'
         env:
           LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
           LOGIN_PIN: ${{ env.LOGIN_PIN }}
@@ -103,8 +104,6 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
         run: mvn exec:java -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
-
-
 
 
 # name: Run Quiz Bot
