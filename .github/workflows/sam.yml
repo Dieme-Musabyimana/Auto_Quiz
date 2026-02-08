@@ -1,17 +1,19 @@
-name: Bot - SAM
+name: Run Quiz Bot - BEL
 
 on:
-  workflow_dispatch:
-  # schedule:
-    # Runs every day at 12:00 UTC
-    # - cron: "0 12 * * *"
+  workflow_dispatch: # Allows manual start from the Actions tab
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Essential for saving the database
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required for reliable merging
 
       - name: Set up Java
         uses: actions/setup-java@v3
@@ -20,28 +22,88 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - name: Install Playwright Browsers
+      - name: Install Playwright
         run: npx playwright install --with-deps chromium
-
-      - name: Compile tests
-        run: mvn clean test-compile
 
       - name: Run Quiz Bot
         env:
-          # Use the specific secret for this account
-          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE_SAM }}
+          LOGIN_PHONE: ${{ secrets.LOGIN_PHONE_BEL }} # 1. Change this for other accounts
           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
-          LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
           API_KEY: ${{ secrets.API_KEY }}
-          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
-        # Passing "BEL" as the argument for the account name
-        run: mvn exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="SAM"
+        # 2. Change the argument at the end for other accounts
+        run: mvn exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="BEL"
 
-      - name: Commit and Push Database Update
+      - name: Save Memory and Sync
         if: always()
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
           git add statistics.json
-          git commit -m "Update memory database [SAM]" || echo "No changes to commit"
-          git push
+          
+          # 3. Change the commit message for other accounts
+          if git commit -m "Update database [BEL]"; then
+            for i in {1..5}; do
+              echo "Attempt $i to sync and push..."
+              git pull --rebase origin main
+              if git push; then
+                echo "Success!"
+                exit 0
+              fi
+              echo "Conflict detected, retrying in 5s..."
+              sleep 5
+            done
+            exit 1
+          else
+            echo "No changes to save."
+          fi
+
+
+
+# name: Bot - SAM
+
+# on:
+#   workflow_dispatch:
+#   # schedule:
+#     # Runs every day at 12:00 UTC
+#     # - cron: "0 12 * * *"
+
+# jobs:
+#   run-bot:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+
+#       - name: Set up Java
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: 'temurin'
+#           java-version: '21'
+#           cache: 'maven'
+
+#       - name: Install Playwright Browsers
+#         run: npx playwright install --with-deps chromium
+
+#       - name: Compile tests
+#         run: mvn clean test-compile
+
+#       - name: Run Quiz Bot
+#         env:
+#           # Use the specific secret for this account
+#           LOGIN_PHONE: ${{ secrets.LOGIN_PHONE_SAM }}
+#           LOGIN_PIN: ${{ secrets.LOGIN_PIN }}
+#           LOGIN_LINK: ${{ secrets.LOGIN_LINK }}
+#           API_KEY: ${{ secrets.API_KEY }}
+#           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }}
+#         # Passing "BEL" as the argument for the account name
+#         run: mvn exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="SAM"
+
+#       - name: Commit and Push Database Update
+#         if: always()
+#         run: |
+#           git config --local user.email "action@github.com"
+#           git config --local user.name "GitHub Action"
+#           git add statistics.json
+#           git commit -m "Update memory database [SAM]" || echo "No changes to commit"
+#           git push
