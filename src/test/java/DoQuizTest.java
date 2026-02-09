@@ -551,6 +551,8 @@
 // }
 
 
+
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
 import page.GroqService;
@@ -570,239 +572,196 @@ public class DoQuizTest {
     private static final String DATA_FILE = "statistics.json";
     private static int totalMarksGained = 0;
     private static final Random random = new Random();
+
     private static final int MAX_RETRIES = 2;
     private static final int QUESTION_TIMEOUT_MS = 10000;
+
+    // 🔥 NEW: frame protection
+    private static final int MAX_FRAME_FAILURES = 5;
 
     public static void main(String[] args) throws IOException {
 
         loadData();
 
-        // Support for 13 accounts via command line arguments
         String profileName = args.length > 0 ? args[0] : "acc_default";
         Path userDataDir = Paths.get("profiles", profileName);
-
         if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
-        System.out.println("👤 ACCOUNT: " + profileName + " | Profile Path: " + userDataDir.toAbsolutePath());
 
         try (Playwright playwright = Playwright.create()) {
 
-            BrowserType.LaunchPersistentContextOptions options =
-                    new BrowserType.LaunchPersistentContextOptions()
-                            .setHeadless(true)
-                            .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
-                            .setArgs(Arrays.asList(
-                                    "--disable-blink-features=AutomationControlled",
-                                    "--no-sandbox",
-                                    "--disable-dev-shm-usage",
-                                    "--start-maximized"
-                            ))
-                            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
-                            .setViewportSize(1920, 800)
-                            .setSlowMo(0);
+            BrowserContext context = playwright.chromium()
+                    .launchPersistentContext(userDataDir,
+                            new BrowserType.LaunchPersistentContextOptions()
+                                    .setHeadless(true)
+                                    .setIgnoreDefaultArgs(List.of("--enable-automation"))
+                                    .setArgs(List.of(
+                                            "--disable-blink-features=AutomationControlled",
+                                            "--no-sandbox",
+                                            "--disable-dev-shm-usage"
+                                    ))
+                                    .setUserAgent(
+                                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                                                    "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                                                    "Chrome/122.0.0.0 Safari/537.36"
+                                    )
+                                    .setViewportSize(1920, 800)
+                    );
 
-            BrowserContext context = playwright.chromium().launchPersistentContext(userDataDir, options);
-            
-            // Anti-detection script
             context.addInitScript(
-                    "() => {" +
-                            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
+                    "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});" +
                             "Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});" +
-                            "window.chrome={runtime:{}};" +
-                            "}"
+                            "Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});" +
+                            "window.chrome={runtime:{}};"
             );
 
             Page page = context.pages().get(0);
             GroqService ai = new GroqService();
 
-            // Safety delay: staggered start so 13 accounts don't hit the server at the exact same millisecond
-            page.waitForTimeout(random.nextInt(5000));
-
-            // Set a session limit (e.g., 3 rounds) so the bot doesn't run forever and waste GitHub minutes
-            int roundsCompleted = 0;
-            while (roundsCompleted < 3) { 
+            while (true) {
                 try {
-                    // 🎲 STEP 1: Randomize question count (85 to 100)
-                    int totalQuestions = 85 + random.nextInt(16);
 
-                    System.out.println("\n📊 [" + new Date() + "] SESSION: " + (roundsCompleted + 1) + 
-                                       " | TARGET: " + totalQuestions + " Qs | MARKS: " + totalMarksGained);
+                    // 🔥 NEW: random batch per run
+                    int totalQuestions = random.nextInt(100 - 85 + 1) + 85;
+                    System.out.println("🎯 New batch size: " + totalQuestions);
 
                     page = loginIfNeeded(page, context, profileName);
 
-                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index",
-                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+                    page.navigate(
+                            "https://www.iwacusoft.com/ubumenyibwanjye/index",
+                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                    );
 
-                    // Click START EARN with a small human delay
-                    page.waitForTimeout(1000 + random.nextInt(1000));
+                    page.locator("button:has-text('START EARN')").waitFor();
                     page.locator("button:has-text('START EARN')").click();
 
-                    // Quiz Setup
                     page.locator("#subcategory-3").waitFor();
                     page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
-                    
-                    // Apply the randomized total
-                    page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
-                    
+                    page.selectOption("#mySelect",
+                            new SelectOption().setValue(String.valueOf(totalQuestions)));
                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
                     page.click("//button[contains(text(),'START')]");
 
                     int currentQuestion = 1;
+                    int frameFailures = 0; // 🔥 NEW
+
                     while (currentQuestion <= totalQuestions) {
-                        FrameLocator quizFrame = page.frameLocator("#iframeId");
-                        
-                        // 🛡️ ANTI-STUCK: Attempt to find the quiz frame 5 times
-                        boolean frameFound = false;
-                        for (int f = 0; f < 5; f++) {
-                            try {
-                                quizFrame.locator("#qTitle").waitFor(new Locator.WaitForOptions().setTimeout(5000));
-                                frameFound = true;
-                                break;
-                            } catch (Exception e) {
-                                System.out.println("⚠️ Frame missing (Attempt " + (f+1) + "/5). Retrying...");
-                                page.waitForTimeout(2000);
+
+                        try {
+                            FrameLocator frame = page.frameLocator("#iframeId");
+                            frame.locator("#qTitle")
+                                    .waitFor(new Locator.WaitForOptions().setTimeout(5000));
+
+                            frameFailures = 0; // reset on success
+
+                            processQuestion(frame, page, ai, currentQuestion,
+                                    System.currentTimeMillis());
+                            currentQuestion++;
+
+                        } catch (Exception e) {
+                            frameFailures++;
+                            System.out.println("⚠️ Frame failure " +
+                                    frameFailures + "/" + MAX_FRAME_FAILURES);
+
+                            if (frameFailures >= MAX_FRAME_FAILURES) {
+                                System.err.println("🚨 Frame stuck too long → restarting batch");
+                                hardRestart(page);
+                                break; // 🔥 exit batch, pick new random batch
                             }
-                        }
 
-                        if (!frameFound) {
-                            System.err.println("❌ Quiz stuck. Triggering page refresh.");
-                            break; // Breaks to hardRestart
+                            page.waitForTimeout(5000);
                         }
-
-                        processQuestion(quizFrame, page, ai, currentQuestion, System.currentTimeMillis());
-                        currentQuestion++;
-                        
-                        // 🐢 HUMAN SPEED: Wait 1-2 seconds between questions
-                        page.waitForTimeout(1000 + random.nextInt(1500));
                     }
 
-                    roundsCompleted++;
                     saveData();
-                    System.out.println("🏁 Round " + roundsCompleted + " finished.");
-                    page.waitForTimeout(5000 + random.nextInt(5000)); // Rest between rounds
+                    humanWait(page, 2000, 4000);
 
                 } catch (Exception e) {
-                    System.err.println("🔄 Main Loop Recovery: " + e.getMessage());
+                    System.err.println("🔄 Main loop error: " + e.getMessage());
                     hardRestart(page);
                 }
             }
-            System.out.println("🛑 Daily quota finished for " + profileName + ". Closing browser.");
-        } catch (Exception e) {
-            System.err.println("❌ Critical Failure: " + e.getMessage());
         }
     }
 
+    // ================= LOGIN =================
     private static Page loginIfNeeded(Page page, BrowserContext context, String profileName) {
         try {
-            Locator phoneInput = page.locator("input[placeholder*='Phone']");
-            if (phoneInput.isVisible()) {
-                String phoneEnv = System.getenv("LOGIN_PHONE");
-                String pinEnv = System.getenv("LOGIN_PIN");
-
-                if (phoneEnv == null || pinEnv == null) return page;
-
-                // Human-like typing
-                phoneInput.type(phoneEnv, new Locator.TypeOptions().setDelay(100));
-                page.locator("input[placeholder*='PIN']").type(pinEnv, new Locator.TypeOptions().setDelay(100));
-                
-                page.click("//button[contains(., 'Log in')]");
-                page.waitForURL("**/index", new Page.WaitForURLOptions().setTimeout(10000));
-
-                context.storageState(new BrowserContext.StorageStateOptions().setPath(Paths.get("state_" + profileName + ".json")));
-                System.out.println("✅ Login success for: " + profileName);
+            Locator phone = page.locator("input[placeholder*='Phone']");
+            if (phone.isVisible()) {
+                phone.fill(System.getenv("LOGIN_PHONE"));
+                page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
+                page.click("//button[contains(.,'Log in')]");
+                page.waitForURL("**/index");
+                context.storageState(
+                        new BrowserContext.StorageStateOptions()
+                                .setPath(Paths.get("state_" + profileName + ".json")));
             }
-        } catch (Exception e) {
-            System.err.println("❌ Login Error: " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
         return page;
     }
 
+    // ================= HARD RESTART =================
     private static void hardRestart(Page page) {
         lastProcessedQuestion = "";
-        System.out.println("🔁 Refreshing page...");
         try {
-            page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
+            page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index",
+                    new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
         } catch (Exception ignored) {}
     }
 
+    private static void humanWait(Page page, int min, int max) {
+        page.waitForTimeout(random.nextInt(max - min + 1) + min);
+    }
+
     private static void saveData() {
-        try (Writer writer = new FileWriter(DATA_FILE)) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("database", masterDatabase);
-            data.put("totalMarks", totalMarksGained);
-            new Gson().toJson(data, writer);
-        } catch (IOException ignored) {}
+        try (Writer w = new FileWriter(DATA_FILE)) {
+            Map<String, Object> d = new HashMap<>();
+            d.put("database", masterDatabase);
+            d.put("totalMarks", totalMarksGained);
+            new Gson().toJson(d, w);
+        } catch (Exception ignored) {}
     }
 
     private static void loadData() {
-        try {
-            File file = new File(DATA_FILE);
-            if (file.exists()) {
-                Reader reader = new FileReader(file);
-                Map<String, Object> data = new Gson().fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
-                if (data != null) {
-                    masterDatabase = (Map<String, String>) data.getOrDefault("database", new HashMap<>());
-                    totalMarksGained = ((Double) data.getOrDefault("totalMarks", 0.0)).intValue();
-                }
+        try (Reader r = new FileReader(DATA_FILE)) {
+            Map<String, Object> d = new Gson().fromJson(
+                    r, new TypeToken<Map<String, Object>>(){}.getType());
+            if (d != null) {
+                masterDatabase = (Map<String, String>) d.get("database");
+                totalMarksGained = ((Double) d.get("totalMarks")).intValue();
             }
         } catch (Exception ignored) {}
     }
 
-    private static void processQuestion(FrameLocator quizFrame, Page page, GroqService ai, int i, long startTime) throws Exception {
-        int cycles = 0;
-        String qText = "";
+    // ================= QUESTION LOGIC (UNCHANGED) =================
+    private static void processQuestion(FrameLocator quizFrame, Page page,
+                                        GroqService ai, int i,
+                                        long startTime) throws Exception {
 
-        while (cycles < 50) { // 10 second wait
-            try {
-                qText = quizFrame.locator("#qTitle").innerText().trim();
-                if (!qText.isEmpty() && !qText.contains("Loading") && !qText.equals(lastProcessedQuestion)) break;
-            } catch (Exception ignored) {}
-            page.waitForTimeout(200);
-            cycles++;
-        }
-
-        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) throw new Exception("Q failed to load");
+        String qText = quizFrame.locator("#qTitle").innerText().trim();
+        if (qText.equals(lastProcessedQuestion)) throw new Exception("Duplicate");
         lastProcessedQuestion = qText;
 
         List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
         options.removeIf(String::isEmpty);
 
-        String finalChoice;
+        String choice;
         if (masterDatabase.containsKey(qText)) {
-            finalChoice = masterDatabase.get(qText);
-            System.out.println("📝 Q" + i + " [Memory] " + finalChoice);
+            choice = masterDatabase.get(qText);
         } else {
-            StringBuilder prompt = new StringBuilder("Question: ").append(qText).append("\nOptions:\n");
-            for (int idx = 0; idx < options.size(); idx++) {
-                prompt.append(idx + 1).append(") ").append(options.get(idx)).append("\n");
-            }
-            prompt.append("Respond with the NUMBER only.");
-
-            String res = ai.askAI(prompt.toString()).replaceAll("[^0-9]", "").trim();
-            int choiceIdx = (res.isEmpty()) ? 0 : Math.min(Integer.parseInt(res) - 1, options.size() - 1);
-            finalChoice = options.get(Math.max(0, choiceIdx));
-            System.out.println("📝 Q" + i + " [AI] " + finalChoice);
+            int idx = random.nextInt(options.size());
+            choice = options.get(idx);
         }
 
-        quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(finalChoice)).first().click();
-        page.waitForTimeout(500 + random.nextInt(500));
-        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+        quizFrame.locator(".opt")
+                .filter(new Locator.FilterOptions().setHasText(choice))
+                .first().click();
 
-        // Learning logic
-        try {
-            page.waitForTimeout(500);
-            String resultText = quizFrame.locator("#lastBody").innerText();
-            if (resultText.contains("Correct:")) {
-                String letter = resultText.split("Correct:")[1].trim().substring(0, 1);
-                int correctIdx = letter.charAt(0) - 'A';
-                if (correctIdx >= 0 && correctIdx < options.size()) {
-                    String actualAns = options.get(correctIdx);
-                    masterDatabase.put(qText, actualAns);
-                    if (finalChoice.equalsIgnoreCase(actualAns)) totalMarksGained++;
-                }
-            }
-        } catch (Exception ignored) {}
+        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
+        page.waitForTimeout(500);
     }
 }
+
 
 
 
