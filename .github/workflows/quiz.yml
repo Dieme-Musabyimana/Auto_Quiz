@@ -3,78 +3,24 @@ name: Run Quiz Bot
 on:
   workflow_dispatch:
     inputs:
-      run_as:
-        description: 'Run Account AS'
-        type: boolean
-        default: false
-      run_mos:
-        description: 'Run Account MOS'
-        type: boolean
-        default: false
-      run_bel:
-        description: 'Run Account BEL'
-        type: boolean
-        default: false
-      run_di:
-        description: 'Run Account DI'
-        type: boolean
-        default: false
-      run_dieu:
-        description: 'Run Account DIEU'
-        type: boolean
-        default: false
-      run_pat:
-        description: 'Run Account PAT'
-        type: boolean
-        default: false
-      run_sam:
-        description: 'Run Account SAM'
-        type: boolean
-        default: false
-      run_na:
-        description: 'Run Account NA'
-        type: boolean
-        default: false
-      run_da:
-        description: 'Run Account DA'
-        type: boolean
-        default: false
-      run_mu:
-        description: 'Run Account MU'
-        type: boolean
-        default: false
-      run_jon:
-        description: 'Run Account JON'
-        type: boolean
-        default: false
-      run_pie:
-        description: 'Run Account PIE'
-        type: boolean
-        default: false
-      run_th:
-        description: 'Run Account TH'
-        type: boolean
-        default: false
-      run_est:
-        description: 'Run Account EST'
-        type: boolean
-        default: false
-      run_pac:
-        description: 'Run Account PAC'
-        type: boolean
-        default: false
-      run_pont:
-        description: 'Run Account PONT'
-        type: boolean
-        default: false
-      run_sab:
-        description: 'Run Account SAB'
-        type: boolean
-        default: false
-      run_sore:
-        description: 'Run Account SORE'
-        type: boolean
-        default: false
+      run_as: { description: 'Run Account AS', type: boolean, default: false }
+      run_mos: { description: 'Run Account MOS', type: boolean, default: false }
+      run_bel: { description: 'Run Account BEL', type: boolean, default: false }
+      run_di: { description: 'Run Account DI', type: boolean, default: false }
+      run_dieu: { description: 'Run Account DIEU', type: boolean, default: false }
+      run_pat: { description: 'Run Account PAT', type: boolean, default: false }
+      run_sam: { description: 'Run Account SAM', type: boolean, default: false }
+      run_na: { description: 'Run Account NA', type: boolean, default: false }
+      run_da: { description: 'Run Account DA', type: boolean, default: false }
+      run_mu: { description: 'Run Account MU', type: boolean, default: false }
+      run_jon: { description: 'Run Account JON', type: boolean, default: false }
+      run_pie: { description: 'Run Account PIE', type: boolean, default: false }
+      run_th: { description: 'Run Account TH', type: boolean, default: false }
+      run_est: { description: 'Run Account EST', type: boolean, default: false }
+      run_pac: { description: 'Run Account PAC', type: boolean, default: false }
+      run_pont: { description: 'Run Account PONT', type: boolean, default: false }
+      run_sab: { description: 'Run Account SAB', type: boolean, default: false }
+      run_sore: { description: 'Run Account SORE', type: boolean, default: false }
 
 jobs:
   run-bot:
@@ -85,42 +31,24 @@ jobs:
       fail-fast: false 
       matrix:
         include:
-          - account: AS
-            id: run_as
-          - account: MOS
-            id: run_mos
-          - account: BEL
-            id: run_bel
-          - account: DI
-            id: run_di
-          - account: DIEU
-            id: run_dieu
-          - account: PAT
-            id: run_pat
-          - account: SAM
-            id: run_sam
-          - account: NA
-            id: run_na
-          - account: DA
-            id: run_da
-          - account: MU
-            id: run_mu
-          - account: JON
-            id: run_jon
-          - account: PIE
-            id: run_pie
-          - account: TH
-            id: run_th
-          - account: EST
-            id: run_est
-          - account: PAC
-            id: run_pac
-          - account: PONT
-            id: run_pont
-          - account: SAB
-            id: run_sab
-          - account: SORE
-            id: run_sore
+          - { account: AS, id: run_as }
+          - { account: MOS, id: run_mos }
+          - { account: BEL, id: run_bel }
+          - { account: DI, id: run_di }
+          - { account: DIEU, id: run_dieu }
+          - { account: PAT, id: run_pat }
+          - { account: SAM, id: run_sam }
+          - { account: NA, id: run_na }
+          - { account: DA, id: run_da }
+          - { account: MU, id: run_mu }
+          - { account: JON, id: run_jon }
+          - { account: PIE, id: run_pie }
+          - { account: TH, id: run_th }
+          - { account: EST, id: run_est }
+          - { account: PAC, id: run_pac }
+          - { account: PONT, id: run_pont }
+          - { account: SAB, id: run_sab }
+          - { account: SORE, id: run_sore }
 
     steps:
       - name: Checkout repository
@@ -159,31 +87,31 @@ jobs:
           case "${{ matrix.account }}" in
             AS)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_AS }}" >> $GITHUB_ENV
               ;;
             MOS)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_MOS }}" >> $GITHUB_ENV
               ;;
             BEL)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_BEL }}" >> $GITHUB_ENV
               ;;
             DI)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DI }}" >> $GITHUB_ENV
               ;;
             DIEU)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DIEU }}" >> $GITHUB_ENV
               ;;
             PAT)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PAT }}" >> $GITHUB_ENV
               ;;
             SAM)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SAM }}" >> $GITHUB_ENV
               ;;
             NA)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_NA }}" >> $GITHUB_ENV
@@ -199,7 +127,7 @@ jobs:
               ;;
             JON)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_JON }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_JON }}" >> $GITHUB_ENV
               ;;
             PIE)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PIE }}" >> $GITHUB_ENV
@@ -207,7 +135,7 @@ jobs:
               ;;
             TH)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_TH }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_TH }}" >> $GITHUB_ENV
               ;;
             EST)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_EST }}" >> $GITHUB_ENV
@@ -248,12 +176,271 @@ jobs:
           if git commit -m "Update database [${{ matrix.account }}]"; then
             for i in {1..5}; do
               git pull --rebase origin main
-              if git push; then
-                exit 0
-              fi
+              if git push; then exit 0; fi
               sleep 5
             done
           fi
+
+
+
+
+
+# name: Run Quiz Bot
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       run_as:
+#         description: 'Run Account AS'
+#         type: boolean
+#         default: false
+#       run_mos:
+#         description: 'Run Account MOS'
+#         type: boolean
+#         default: false
+#       run_bel:
+#         description: 'Run Account BEL'
+#         type: boolean
+#         default: false
+#       run_di:
+#         description: 'Run Account DI'
+#         type: boolean
+#         default: false
+#       run_dieu:
+#         description: 'Run Account DIEU'
+#         type: boolean
+#         default: false
+#       run_pat:
+#         description: 'Run Account PAT'
+#         type: boolean
+#         default: false
+#       run_sam:
+#         description: 'Run Account SAM'
+#         type: boolean
+#         default: false
+#       run_na:
+#         description: 'Run Account NA'
+#         type: boolean
+#         default: false
+#       run_da:
+#         description: 'Run Account DA'
+#         type: boolean
+#         default: false
+#       run_mu:
+#         description: 'Run Account MU'
+#         type: boolean
+#         default: false
+#       run_jon:
+#         description: 'Run Account JON'
+#         type: boolean
+#         default: false
+#       run_pie:
+#         description: 'Run Account PIE'
+#         type: boolean
+#         default: false
+#       run_th:
+#         description: 'Run Account TH'
+#         type: boolean
+#         default: false
+#       run_est:
+#         description: 'Run Account EST'
+#         type: boolean
+#         default: false
+#       run_pac:
+#         description: 'Run Account PAC'
+#         type: boolean
+#         default: false
+#       run_pont:
+#         description: 'Run Account PONT'
+#         type: boolean
+#         default: false
+#       run_sab:
+#         description: 'Run Account SAB'
+#         type: boolean
+#         default: false
+#       run_sore:
+#         description: 'Run Account SORE'
+#         type: boolean
+#         default: false
+
+# jobs:
+#   run-bot:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     strategy:
+#       fail-fast: false 
+#       matrix:
+#         include:
+#           - account: AS
+#             id: run_as
+#           - account: MOS
+#             id: run_mos
+#           - account: BEL
+#             id: run_bel
+#           - account: DI
+#             id: run_di
+#           - account: DIEU
+#             id: run_dieu
+#           - account: PAT
+#             id: run_pat
+#           - account: SAM
+#             id: run_sam
+#           - account: NA
+#             id: run_na
+#           - account: DA
+#             id: run_da
+#           - account: MU
+#             id: run_mu
+#           - account: JON
+#             id: run_jon
+#           - account: PIE
+#             id: run_pie
+#           - account: TH
+#             id: run_th
+#           - account: EST
+#             id: run_est
+#           - account: PAC
+#             id: run_pac
+#           - account: PONT
+#             id: run_pont
+#           - account: SAB
+#             id: run_sab
+#           - account: SORE
+#             id: run_sore
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0
+
+#       - name: Check if account should run
+#         id: check_selection
+#         run: |
+#           if [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
+#             echo "should_run=true" >> $GITHUB_OUTPUT
+#           else
+#             echo "should_run=false" >> $GITHUB_OUTPUT
+#           fi
+
+#       - name: Set up Java
+#         if: steps.check_selection.outputs.should_run == 'true'
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: temurin
+#           java-version: 21
+#           cache: 'maven'
+
+#       - name: Install Playwright
+#         if: steps.check_selection.outputs.should_run == 'true'
+#         run: npx playwright install --with-deps chromium
+
+#       - name: Compile
+#         if: steps.check_selection.outputs.should_run == 'true'
+#         run: mvn clean test-compile
+
+#       - name: Set Account Secrets
+#         if: steps.check_selection.outputs.should_run == 'true'
+#         run: |
+#           case "${{ matrix.account }}" in
+#             AS)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             MOS)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             BEL)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             DI)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             DIEU)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             PAT)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             SAM)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             NA)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_NA }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_NA }}" >> $GITHUB_ENV
+#               ;;
+#             DA)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DA }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DA }}" >> $GITHUB_ENV
+#               ;;
+#             MU)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MU }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_MU }}" >> $GITHUB_ENV
+#               ;;
+#             JON)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_JON }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             PIE)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PIE }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PIE }}" >> $GITHUB_ENV
+#               ;;
+#             TH)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_TH }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+#               ;;
+#             EST)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_EST }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_EST }}" >> $GITHUB_ENV
+#               ;;
+#             PAC)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAC }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PAC }}" >> $GITHUB_ENV
+#               ;;
+#             PONT)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PONT }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PONT }}" >> $GITHUB_ENV
+#               ;;
+#             SAB)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAB }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SAB }}" >> $GITHUB_ENV
+#               ;;
+#             SORE)
+#               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SORE }}" >> $GITHUB_ENV
+#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SORE }}" >> $GITHUB_ENV
+#               ;;
+#           esac
+
+#       - name: Run Quiz Bot
+#         if: steps.check_selection.outputs.should_run == 'true'
+#         env:
+#           LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
+#           LOGIN_PIN: ${{ env.LOGIN_PIN }}
+#           API_KEY: ${{ secrets.API_KEY }}
+#         run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
+
+#       - name: Save and Sync Memory
+#         if: steps.check_selection.outputs.should_run == 'true' && always()
+#         run: |
+#           git config --local user.email "action@github.com"
+#           git config --local user.name "GitHub Action"
+#           git add statistics.json
+#           if git commit -m "Update database [${{ matrix.account }}]"; then
+#             for i in {1..5}; do
+#               git pull --rebase origin main
+#               if git push; then
+#                 exit 0
+#               fi
+#               sleep 5
+#             done
+#           fi
 
 
 
