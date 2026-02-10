@@ -507,6 +507,7 @@ public class DoQuizTest {
 
                     page.locator(randomSubjectId).waitFor();
                     page.click(randomSubjectId);
+                    page.selectOption(randomSubjectId, new SelectOption().setIndex(2));
                     // ==================================================================
 
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
