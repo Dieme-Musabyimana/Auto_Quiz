@@ -117,8 +117,8 @@ jobs:
           LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
           LOGIN_PIN: ${{ env.LOGIN_PIN }}
           API_KEY: ${{ secrets.API_KEY }}
+          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }} 
         run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
-
       - name: Unlock and Sync
         if: steps.check_selection.outputs.should_run == 'true' && always()
         run: |
