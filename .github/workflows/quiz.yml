@@ -87,31 +87,31 @@ jobs:
           case "${{ matrix.account }}" in
             AS)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_AS }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             MOS)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_MOS }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             BEL)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_BEL }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             DI)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DI }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             DIEU)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DIEU }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             PAT)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PAT }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             SAM)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SAM }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             NA)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_NA }}" >> $GITHUB_ENV
@@ -127,7 +127,7 @@ jobs:
               ;;
             JON)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_JON }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_JON }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             PIE)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PIE }}" >> $GITHUB_ENV
@@ -135,7 +135,7 @@ jobs:
               ;;
             TH)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_TH }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_TH }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
             EST)
               echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_EST }}" >> $GITHUB_ENV
