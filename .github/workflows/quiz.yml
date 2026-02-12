@@ -23,7 +23,7 @@ on:
       run_sore: { description: 'Run Account SORE', type: boolean, default: false }
   
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/6 * * * *'
 
 jobs:
   run-bot:
