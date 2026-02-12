@@ -21,10 +21,10 @@ on:
       run_pont: { description: 'Run Account PONT', type: boolean, default: false }
       run_sab: { description: 'Run Account SAB', type: boolean, default: false }
       run_sore: { description: 'Run Account SORE', type: boolean, default: false }
-
-  # 🕒 Runs automatically every 20 minutes
+  
+  # 🕒 This MUST be at the same indentation level as workflow_dispatch
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/20 * * * *'
 
 jobs:
   run-bot:
@@ -63,8 +63,8 @@ jobs:
       - name: Check if account should run
         id: check_selection
         run: |
-          # If triggered by schedule, we try to run ALL. 
-          # If manual, we check the specific input.
+          # If triggered by schedule, run ALL idle accounts.
+          # If manual, only run selected.
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
@@ -76,6 +76,7 @@ jobs:
       - name: Lock Protection
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
+          # Skip if the lock file already exists (account is busy)
           if [ -f "locks/${{ matrix.account }}.lock" ]; then
             echo "⏭️ SKIPPING: ${{ matrix.account }} is currently busy."
             exit 0
@@ -91,7 +92,7 @@ jobs:
       - name: Staggered Start
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
-          # Wait between 1 and 60 seconds so bots don't login all at once
+          # Wait up to 60s so 18 bots don't hit the server at the exact same time
           SLEEP_TIME=$(( (RANDOM % 60) + 1 ))
           echo "⏳ Waiting ${SLEEP_TIME}s..."
           sleep ${SLEEP_TIME}
@@ -140,7 +141,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Rebase to get latest locks/statistics from other parallel jobs
+          # Sync with other parallel jobs
           git pull --rebase origin main
           rm -f locks/${{ matrix.account }}.lock
           git add statistics.json locks/${{ matrix.account }}.lock
@@ -151,8 +152,6 @@ jobs:
               sleep 5
             done
           fi
-
-
 
 # name: Run Quiz Bot
 
