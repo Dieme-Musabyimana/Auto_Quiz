@@ -83,91 +83,91 @@
 #             echo "should_run=false" >> $GITHUB_OUTPUT
 #           fi
 
-      - name: Sequential Start Delay
-        if: steps.check_selection.outputs.should_run == 'true'
-        run: |
-          ACCOUNTS=("AS" "MOS" "BEL" "DI" "DIEU" "PAT" "SAM" "NA" "DA" "MU" "JON" "PIE" "TH" "EST" "PAC" "PONT" "SAB" "SORE")
-          INDEX=0
-          for i in "${!ACCOUNTS[@]}"; do
-             if [[ "${ACCOUNTS[$i]}" == "${{ matrix.account }}" ]]; then
-                 INDEX=$i
-                 break
-             fi
-          done
-          # Wait 120 seconds (2 mins) per account index
-          DELAY=$(( INDEX * 120 ))
-          echo "⏳ Account ${{ matrix.account }} is number $((INDEX + 1)) in line. Waiting ${DELAY}s..."
-          sleep ${DELAY}
+      # - name: Sequential Start Delay
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   run: |
+      #     ACCOUNTS=("AS" "MOS" "BEL" "DI" "DIEU" "PAT" "SAM" "NA" "DA" "MU" "JON" "PIE" "TH" "EST" "PAC" "PONT" "SAB" "SORE")
+      #     INDEX=0
+      #     for i in "${!ACCOUNTS[@]}"; do
+      #        if [[ "${ACCOUNTS[$i]}" == "${{ matrix.account }}" ]]; then
+      #            INDEX=$i
+      #            break
+      #        fi
+      #     done
+      #     # Wait 120 seconds (2 mins) per account index
+      #     DELAY=$(( INDEX * 120 ))
+      #     echo "⏳ Account ${{ matrix.account }} is number $((INDEX + 1)) in line. Waiting ${DELAY}s..."
+      #     sleep ${DELAY}
 
-      - name: Lock Protection
-        if: steps.check_selection.outputs.should_run == 'true'
-        run: |
-          if [ -f "locks/${{ matrix.account }}.lock" ]; then
-            echo "⏭️ SKIPPING: ${{ matrix.account }} is currently busy."
-            exit 0
-          fi
-          mkdir -p locks
-          touch locks/${{ matrix.account }}.lock
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add locks/${{ matrix.account }}.lock
-          git commit -m "🔒 Lock [${{ matrix.account }}]"
-          git push
+      # - name: Lock Protection
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   run: |
+      #     if [ -f "locks/${{ matrix.account }}.lock" ]; then
+      #       echo "⏭️ SKIPPING: ${{ matrix.account }} is currently busy."
+      #       exit 0
+      #     fi
+      #     mkdir -p locks
+      #     touch locks/${{ matrix.account }}.lock
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git add locks/${{ matrix.account }}.lock
+      #     git commit -m "🔒 Lock [${{ matrix.account }}]"
+      #     git push
 
-      - name: Set up Java
-        if: steps.check_selection.outputs.should_run == 'true'
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 21
-          cache: 'maven'
+      # - name: Set up Java
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   uses: actions/setup-java@v3
+      #   with:
+      #     distribution: temurin
+      #     java-version: 21
+      #     cache: 'maven'
 
-      - name: Install Playwright
-        if: steps.check_selection.outputs.should_run == 'true'
-        run: npx playwright install --with-deps chromium
+      # - name: Install Playwright
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   run: npx playwright install --with-deps chromium
 
-      - name: Compile
-        if: steps.check_selection.outputs.should_run == 'true'
-        run: mvn clean test-compile
+      # - name: Compile
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   run: mvn clean test-compile
 
-      - name: Set Account Secrets
-        if: steps.check_selection.outputs.should_run == 'true'
-        run: |
-          case "${{ matrix.account }}" in
-            DI|SAM|TH)
-              echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
-              ;;
-            NA|DA|MU|PIE|EST|PAC|PONT|SAB|SORE|PAT|JON|DIEU|BEL|AS|MOS)
-              echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
-              echo "LOGIN_PIN=${{ secrets[format('LOGIN_PIN_{0}', matrix.account)] }}" >> $GITHUB_ENV
-              ;;
-          esac
+      # - name: Set Account Secrets
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   run: |
+      #     case "${{ matrix.account }}" in
+      #       DI|SAM|TH)
+      #         echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
+      #         echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+      #         ;;
+      #       NA|DA|MU|PIE|EST|PAC|PONT|SAB|SORE|PAT|JON|DIEU|BEL|AS|MOS)
+      #         echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
+      #         echo "LOGIN_PIN=${{ secrets[format('LOGIN_PIN_{0}', matrix.account)] }}" >> $GITHUB_ENV
+      #         ;;
+      #     esac
 
-      - name: Run Quiz Bot
-        if: steps.check_selection.outputs.should_run == 'true'
-        env:
-          LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
-          LOGIN_PIN: ${{ env.LOGIN_PIN }}
-          API_KEY: ${{ secrets.API_KEY }}
-          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }} 
-        run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
+      # - name: Run Quiz Bot
+      #   if: steps.check_selection.outputs.should_run == 'true'
+      #   env:
+      #     LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
+      #     LOGIN_PIN: ${{ env.LOGIN_PIN }}
+      #     API_KEY: ${{ secrets.API_KEY }}
+      #     AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }} 
+      #   run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
 
-      - name: Unlock and Sync
-        if: steps.check_selection.outputs.should_run == 'true' && always()
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git pull --rebase origin main
-          rm -f locks/${{ matrix.account }}.lock
-          git add statistics.json locks/${{ matrix.account }}.lock
-          if git commit -m "🔓 Unlock [${{ matrix.account }}]"; then
-            for i in {1..5}; do
-              if git push; then exit 0; fi
-              git pull --rebase origin main
-              sleep 5
-            done
-          fi
+      # - name: Unlock and Sync
+      #   if: steps.check_selection.outputs.should_run == 'true' && always()
+      #   run: |
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git pull --rebase origin main
+      #     rm -f locks/${{ matrix.account }}.lock
+      #     git add statistics.json locks/${{ matrix.account }}.lock
+      #     if git commit -m "🔓 Unlock [${{ matrix.account }}]"; then
+      #       for i in {1..5}; do
+      #         if git push; then exit 0; fi
+      #         git pull --rebase origin main
+      #         sleep 5
+      #       done
+      #     fi
 
 
 name: Run Quiz Bot
