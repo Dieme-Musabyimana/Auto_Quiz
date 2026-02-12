@@ -1,87 +1,87 @@
-name: Run Quiz Bot
+# name: Run Quiz Bot
 
-on:
-  workflow_dispatch:
-    inputs:
-      run_as: { description: 'Run Account AS', type: boolean, default: false }
-      run_mos: { description: 'Run Account MOS', type: boolean, default: false }
-      run_bel: { description: 'Run Account BEL', type: boolean, default: false }
-      run_di: { description: 'Run Account DI', type: boolean, default: false }
-      run_dieu: { description: 'Run Account DIEU', type: boolean, default: false }
-      run_pat: { description: 'Run Account PAT', type: boolean, default: false }
-      run_sam: { description: 'Run Account SAM', type: boolean, default: false }
-      run_na: { description: 'Run Account NA', type: boolean, default: false }
-      run_da: { description: 'Run Account DA', type: boolean, default: false }
-      run_mu: { description: 'Run Account MU', type: boolean, default: false }
-      run_jon: { description: 'Run Account JON', type: boolean, default: false }
-      run_pie: { description: 'Run Account PIE', type: boolean, default: false }
-      run_th: { description: 'Run Account TH', type: boolean, default: false }
-      run_est: { description: 'Run Account EST', type: boolean, default: false }
-      run_pac: { description: 'Run Account PAC', type: boolean, default: false }
-      run_pont: { description: 'Run Account PONT', type: boolean, default: false }
-      run_sab: { description: 'Run Account SAB', type: boolean, default: false }
-      run_sore: { description: 'Run Account SORE', type: boolean, default: false }
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       run_as: { description: 'Run Account AS', type: boolean, default: false }
+#       run_mos: { description: 'Run Account MOS', type: boolean, default: false }
+#       run_bel: { description: 'Run Account BEL', type: boolean, default: false }
+#       run_di: { description: 'Run Account DI', type: boolean, default: false }
+#       run_dieu: { description: 'Run Account DIEU', type: boolean, default: false }
+#       run_pat: { description: 'Run Account PAT', type: boolean, default: false }
+#       run_sam: { description: 'Run Account SAM', type: boolean, default: false }
+#       run_na: { description: 'Run Account NA', type: boolean, default: false }
+#       run_da: { description: 'Run Account DA', type: boolean, default: false }
+#       run_mu: { description: 'Run Account MU', type: boolean, default: false }
+#       run_jon: { description: 'Run Account JON', type: boolean, default: false }
+#       run_pie: { description: 'Run Account PIE', type: boolean, default: false }
+#       run_th: { description: 'Run Account TH', type: boolean, default: false }
+#       run_est: { description: 'Run Account EST', type: boolean, default: false }
+#       run_pac: { description: 'Run Account PAC', type: boolean, default: false }
+#       run_pont: { description: 'Run Account PONT', type: boolean, default: false }
+#       run_sab: { description: 'Run Account SAB', type: boolean, default: false }
+#       run_sore: { description: 'Run Account SORE', type: boolean, default: false }
   
-  schedule:
-    - cron: '*/6 * * * *'
+#   schedule:
+#     - cron: '*/6 * * * *'
 
-jobs:
-  run-bot:
-    runs-on: ubuntu-latest
-    timeout-minutes: 360 # ⏱️ Allows the full 6-hour run
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false 
-      # max-parallel is removed to allow all 18 to run at once
-      matrix:
-        include:
-          - { account: AS, id: run_as }
-          - { account: MOS, id: run_mos }
-          - { account: BEL, id: run_bel }
-          - { account: DI, id: run_di }
-          - { account: DIEU, id: run_dieu }
-          - { account: PAT, id: run_pat }
-          - { account: SAM, id: run_sam }
-          - { account: NA, id: run_na }
-          - { account: DA, id: run_da }
-          - { account: MU, id: run_mu }
-          - { account: JON, id: run_jon }
-          - { account: PIE, id: run_pie }
-          - { account: TH, id: run_th }
-          - { account: EST, id: run_est }
-          - { account: PAC, id: run_pac }
-          - { account: PONT, id: run_pont }
-          - { account: SAB, id: run_sab }
-          - { account: SORE, id: run_sore }
+# jobs:
+#   run-bot:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 360 # ⏱️ Allows the full 6-hour run
+#     permissions:
+#       contents: write
+#     strategy:
+#       fail-fast: false 
+#       # max-parallel is removed to allow all 18 to run at once
+#       matrix:
+#         include:
+#           - { account: AS, id: run_as }
+#           - { account: MOS, id: run_mos }
+#           - { account: BEL, id: run_bel }
+#           - { account: DI, id: run_di }
+#           - { account: DIEU, id: run_dieu }
+#           - { account: PAT, id: run_pat }
+#           - { account: SAM, id: run_sam }
+#           - { account: NA, id: run_na }
+#           - { account: DA, id: run_da }
+#           - { account: MU, id: run_mu }
+#           - { account: JON, id: run_jon }
+#           - { account: PIE, id: run_pie }
+#           - { account: TH, id: run_th }
+#           - { account: EST, id: run_est }
+#           - { account: PAC, id: run_pac }
+#           - { account: PONT, id: run_pont }
+#           - { account: SAB, id: run_sab }
+#           - { account: SORE, id: run_sore }
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
+#         with:
+#           fetch-depth: 0
 
-      - name: Cleanup Stale Locks
-        run: |
-          mkdir -p locks
-          # Deletes locks older than 6 hours (cleaning up after the max run time)
-          find locks/ -name "*.lock" -mmin +360 -delete
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add locks/
-          git commit -m "🧹 Cleanup stale locks" || echo "Nothing to clean"
-          git push || echo "Nothing to push"
+#       - name: Cleanup Stale Locks
+#         run: |
+#           mkdir -p locks
+#           # Deletes locks older than 6 hours (cleaning up after the max run time)
+#           find locks/ -name "*.lock" -mmin +360 -delete
+#           git config --local user.email "action@github.com"
+#           git config --local user.name "GitHub Action"
+#           git add locks/
+#           git commit -m "🧹 Cleanup stale locks" || echo "Nothing to clean"
+#           git push || echo "Nothing to push"
 
-      - name: Check if account should run
-        id: check_selection
-        run: |
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_run=false" >> $GITHUB_OUTPUT
-          fi
+#       - name: Check if account should run
+#         id: check_selection
+#         run: |
+#           if [[ "${{ github.event_name }}" == "schedule" ]]; then
+#             echo "should_run=true" >> $GITHUB_OUTPUT
+#           elif [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
+#             echo "should_run=true" >> $GITHUB_OUTPUT
+#           else
+#             echo "should_run=false" >> $GITHUB_OUTPUT
+#           fi
 
       - name: Sequential Start Delay
         if: steps.check_selection.outputs.should_run == 'true'
@@ -168,142 +168,144 @@ jobs:
               sleep 5
             done
           fi
-# name: Run Quiz Bot
 
-# on:
-#   workflow_dispatch:
-#     inputs:
-#       run_as: { description: 'Run Account AS', type: boolean, default: false }
-#       run_mos: { description: 'Run Account MOS', type: boolean, default: false }
-#       run_bel: { description: 'Run Account BEL', type: boolean, default: false }
-#       run_di: { description: 'Run Account DI', type: boolean, default: false }
-#       run_dieu: { description: 'Run Account DIEU', type: boolean, default: false }
-#       run_pat: { description: 'Run Account PAT', type: boolean, default: false }
-#       run_sam: { description: 'Run Account SAM', type: boolean, default: false }
-#       run_na: { description: 'Run Account NA', type: boolean, default: false }
-#       run_da: { description: 'Run Account DA', type: boolean, default: false }
-#       run_mu: { description: 'Run Account MU', type: boolean, default: false }
-#       run_jon: { description: 'Run Account JON', type: boolean, default: false }
-#       run_pie: { description: 'Run Account PIE', type: boolean, default: false }
-#       run_th: { description: 'Run Account TH', type: boolean, default: false }
-#       run_est: { description: 'Run Account EST', type: boolean, default: false }
-#       run_pac: { description: 'Run Account PAC', type: boolean, default: false }
-#       run_pont: { description: 'Run Account PONT', type: boolean, default: false }
-#       run_sab: { description: 'Run Account SAB', type: boolean, default: false }
-#       run_sore: { description: 'Run Account SORE', type: boolean, default: false }
 
-# jobs:
-#   run-bot:
-#     runs-on: ubuntu-latest
-#     permissions:
-#       contents: write
-#     strategy:
-#       fail-fast: false 
-#       matrix:
-#         include:
-#           - { account: AS, id: run_as }
-#           - { account: MOS, id: run_mos }
-#           - { account: BEL, id: run_bel }
-#           - { account: DI, id: run_di }
-#           - { account: DIEU, id: run_dieu }
-#           - { account: PAT, id: run_pat }
-#           - { account: SAM, id: run_sam }
-#           - { account: NA, id: run_na }
-#           - { account: DA, id: run_da }
-#           - { account: MU, id: run_mu }
-#           - { account: JON, id: run_jon }
-#           - { account: PIE, id: run_pie }
-#           - { account: TH, id: run_th }
-#           - { account: EST, id: run_est }
-#           - { account: PAC, id: run_pac }
-#           - { account: PONT, id: run_pont }
-#           - { account: SAB, id: run_sab }
-#           - { account: SORE, id: run_sore }
+name: Run Quiz Bot
 
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v3
-#         with:
-#           fetch-depth: 0
+on:
+  workflow_dispatch:
+    inputs:
+      run_as: { description: 'Run Account AS', type: boolean, default: false }
+      run_mos: { description: 'Run Account MOS', type: boolean, default: false }
+      run_bel: { description: 'Run Account BEL', type: boolean, default: false }
+      run_di: { description: 'Run Account DI', type: boolean, default: false }
+      run_dieu: { description: 'Run Account DIEU', type: boolean, default: false }
+      run_pat: { description: 'Run Account PAT', type: boolean, default: false }
+      run_sam: { description: 'Run Account SAM', type: boolean, default: false }
+      run_na: { description: 'Run Account NA', type: boolean, default: false }
+      run_da: { description: 'Run Account DA', type: boolean, default: false }
+      run_mu: { description: 'Run Account MU', type: boolean, default: false }
+      run_jon: { description: 'Run Account JON', type: boolean, default: false }
+      run_pie: { description: 'Run Account PIE', type: boolean, default: false }
+      run_th: { description: 'Run Account TH', type: boolean, default: false }
+      run_est: { description: 'Run Account EST', type: boolean, default: false }
+      run_pac: { description: 'Run Account PAC', type: boolean, default: false }
+      run_pont: { description: 'Run Account PONT', type: boolean, default: false }
+      run_sab: { description: 'Run Account SAB', type: boolean, default: false }
+      run_sore: { description: 'Run Account SORE', type: boolean, default: false }
 
-#       - name: Check if account should run
-#         id: check_selection
-#         run: |
-#           if [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
-#             echo "should_run=true" >> $GITHUB_OUTPUT
-#           else
-#             echo "should_run=false" >> $GITHUB_OUTPUT
-#           fi
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false 
+      matrix:
+        include:
+          - { account: AS, id: run_as }
+          - { account: MOS, id: run_mos }
+          - { account: BEL, id: run_bel }
+          - { account: DI, id: run_di }
+          - { account: DIEU, id: run_dieu }
+          - { account: PAT, id: run_pat }
+          - { account: SAM, id: run_sam }
+          - { account: NA, id: run_na }
+          - { account: DA, id: run_da }
+          - { account: MU, id: run_mu }
+          - { account: JON, id: run_jon }
+          - { account: PIE, id: run_pie }
+          - { account: TH, id: run_th }
+          - { account: EST, id: run_est }
+          - { account: PAC, id: run_pac }
+          - { account: PONT, id: run_pont }
+          - { account: SAB, id: run_sab }
+          - { account: SORE, id: run_sore }
 
-#       - name: Lock Protection
-#         if: steps.check_selection.outputs.should_run == 'true'
-#         run: |
-#           # Only runs if the user selected this account
-#           if [ -f "locks/${{ matrix.account }}.lock" ]; then
-#             echo "❌ ERROR: ${{ matrix.account }} is already running."
-#             exit 1
-#           fi
-#           mkdir -p locks
-#           touch locks/${{ matrix.account }}.lock
-#           git config --local user.email "action@github.com"
-#           git config --local user.name "GitHub Action"
-#           git add locks/${{ matrix.account }}.lock
-#           git commit -m "🔒 Lock [${{ matrix.account }}]"
-#           git push
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-#       - name: Set up Java
-#         if: steps.check_selection.outputs.should_run == 'true'
-#         uses: actions/setup-java@v3
-#         with:
-#           distribution: temurin
-#           java-version: 21
-#           cache: 'maven'
+      - name: Check if account should run
+        id: check_selection
+        run: |
+          if [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
 
-#       - name: Install Playwright
-#         if: steps.check_selection.outputs.should_run == 'true'
-#         run: npx playwright install --with-deps chromium
+      - name: Lock Protection
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: |
+          # Only runs if the user selected this account
+          if [ -f "locks/${{ matrix.account }}.lock" ]; then
+            echo "❌ ERROR: ${{ matrix.account }} is already running."
+            exit 1
+          fi
+          mkdir -p locks
+          touch locks/${{ matrix.account }}.lock
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add locks/${{ matrix.account }}.lock
+          git commit -m "🔒 Lock [${{ matrix.account }}]"
+          git push
 
-#       - name: Compile
-#         if: steps.check_selection.outputs.should_run == 'true'
-#         run: mvn clean test-compile
+      - name: Set up Java
+        if: steps.check_selection.outputs.should_run == 'true'
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: 'maven'
 
-#       - name: Set Account Secrets
-#         if: steps.check_selection.outputs.should_run == 'true'
-#         run: |
-#           case "${{ matrix.account }}" in
-#             DI|SAM|TH)
-#               echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
-#               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
-#               ;;
-#             NA|DA|MU|PIE|EST|PAC|PONT|SAB|SORE|PAT|JON|DIEU|BEL|AS|MOS)
-#               echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
-#               echo "LOGIN_PIN=${{ secrets[format('LOGIN_PIN_{0}', matrix.account)] }}" >> $GITHUB_ENV
-#               ;;
-#           esac
+      - name: Install Playwright
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: npx playwright install --with-deps chromium
 
-#       - name: Run Quiz Bot
-#         if: steps.check_selection.outputs.should_run == 'true'
-#         env:
-#           LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
-#           LOGIN_PIN: ${{ env.LOGIN_PIN }}
-#           API_KEY: ${{ secrets.API_KEY }}
-#           AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }} 
-#         run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
-#       - name: Unlock and Sync
-#         if: steps.check_selection.outputs.should_run == 'true' && always()
-#         run: |
-#           git config --local user.email "action@github.com"
-#           git config --local user.name "GitHub Action"
-#           git pull --rebase origin main
-#           rm -f locks/${{ matrix.account }}.lock
-#           git add statistics.json locks/${{ matrix.account }}.lock
-#           if git commit -m "🔓 Unlock [${{ matrix.account }}]"; then
-#             for i in {1..5}; do
-#               if git push; then exit 0; fi
-#               git pull --rebase origin main
-#               sleep 5
-#             done
-#           fi
+      - name: Compile
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: mvn clean test-compile
+
+      - name: Set Account Secrets
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: |
+          case "${{ matrix.account }}" in
+            DI|SAM|TH)
+              echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
+              ;;
+            NA|DA|MU|PIE|EST|PAC|PONT|SAB|SORE|PAT|JON|DIEU|BEL|AS|MOS)
+              echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
+              echo "LOGIN_PIN=${{ secrets[format('LOGIN_PIN_{0}', matrix.account)] }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Run Quiz Bot
+        if: steps.check_selection.outputs.should_run == 'true'
+        env:
+          LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
+          LOGIN_PIN: ${{ env.LOGIN_PIN }}
+          API_KEY: ${{ secrets.API_KEY }}
+          AI_SERVICE_LINK: ${{ secrets.AI_SERVICE_LINK }} 
+        run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="DoQuizTest" -Dexec.args="${{ matrix.account }}"
+      - name: Unlock and Sync
+        if: steps.check_selection.outputs.should_run == 'true' && always()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull --rebase origin main
+          rm -f locks/${{ matrix.account }}.lock
+          git add statistics.json locks/${{ matrix.account }}.lock
+          if git commit -m "🔓 Unlock [${{ matrix.account }}]"; then
+            for i in {1..5}; do
+              if git push; then exit 0; fi
+              git pull --rebase origin main
+              sleep 5
+            done
+          fi
 
 
 
