@@ -22,17 +22,18 @@ on:
       run_sab: { description: 'Run Account SAB', type: boolean, default: false }
       run_sore: { description: 'Run Account SORE', type: boolean, default: false }
   
-  # 🕒 This MUST be at the same indentation level as workflow_dispatch
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/30 * * * *'
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 360 # ⏱️ Allows the full 6-hour run
     permissions:
       contents: write
     strategy:
       fail-fast: false 
+      # max-parallel is removed to allow all 18 to run at once
       matrix:
         include:
           - { account: AS, id: run_as }
@@ -60,11 +61,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Cleanup Stale Locks
+        run: |
+          mkdir -p locks
+          # Deletes locks older than 6 hours (cleaning up after the max run time)
+          find locks/ -name "*.lock" -mmin +360 -delete
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add locks/
+          git commit -m "🧹 Cleanup stale locks" || echo "Nothing to clean"
+          git push || echo "Nothing to push"
+
       - name: Check if account should run
         id: check_selection
         run: |
-          # If triggered by schedule, run ALL idle accounts.
-          # If manual, only run selected.
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
           elif [[ "${{ github.event.inputs[matrix.id] }}" == "true" ]]; then
@@ -73,10 +83,25 @@ jobs:
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Sequential Start Delay
+        if: steps.check_selection.outputs.should_run == 'true'
+        run: |
+          ACCOUNTS=("AS" "MOS" "BEL" "DI" "DIEU" "PAT" "SAM" "NA" "DA" "MU" "JON" "PIE" "TH" "EST" "PAC" "PONT" "SAB" "SORE")
+          INDEX=0
+          for i in "${!ACCOUNTS[@]}"; do
+             if [[ "${ACCOUNTS[$i]}" == "${{ matrix.account }}" ]]; then
+                 INDEX=$i
+                 break
+             fi
+          done
+          # Wait 120 seconds (2 mins) per account index
+          DELAY=$(( INDEX * 120 ))
+          echo "⏳ Account ${{ matrix.account }} is number $((INDEX + 1)) in line. Waiting ${DELAY}s..."
+          sleep ${DELAY}
+
       - name: Lock Protection
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
-          # Skip if the lock file already exists (account is busy)
           if [ -f "locks/${{ matrix.account }}.lock" ]; then
             echo "⏭️ SKIPPING: ${{ matrix.account }} is currently busy."
             exit 0
@@ -88,14 +113,6 @@ jobs:
           git add locks/${{ matrix.account }}.lock
           git commit -m "🔒 Lock [${{ matrix.account }}]"
           git push
-
-      - name: Staggered Start
-        if: steps.check_selection.outputs.should_run == 'true'
-        run: |
-          # Wait up to 60s so 18 bots don't hit the server at the exact same time
-          SLEEP_TIME=$(( (RANDOM % 60) + 1 ))
-          echo "⏳ Waiting ${SLEEP_TIME}s..."
-          sleep ${SLEEP_TIME}
 
       - name: Set up Java
         if: steps.check_selection.outputs.should_run == 'true'
@@ -141,7 +158,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Sync with other parallel jobs
           git pull --rebase origin main
           rm -f locks/${{ matrix.account }}.lock
           git add statistics.json locks/${{ matrix.account }}.lock
@@ -152,7 +168,6 @@ jobs:
               sleep 5
             done
           fi
-
 # name: Run Quiz Bot
 
 # on:
