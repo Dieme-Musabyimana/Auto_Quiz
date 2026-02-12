@@ -101,7 +101,7 @@ jobs:
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
           case "${{ matrix.account }}" in
-            MOS|DI|SAM|TH)
+            DI|SAM|TH)
               echo "LOGIN_PHONE=${{ secrets[format('LOGIN_PHONE_{0}', matrix.account)] }}" >> $GITHUB_ENV
               echo "LOGIN_PIN=${{ secrets.LOGIN_PIN }}" >> $GITHUB_ENV
               ;;
