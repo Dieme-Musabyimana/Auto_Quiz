@@ -108,7 +108,7 @@ public class DoQuizTest {
 
                     // ==================== Keep existing quiz logic intact ====================
                     page.locator("#subcategory-3").waitFor();
-                    page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+                    page.selectOption("#subcategory-1", new SelectOption().setIndex(2));
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
                     page.click("//button[contains(text(),'START')]");
