@@ -3,80 +3,24 @@ name: Run Test Bot
 on:
   workflow_dispatch:
     inputs:
-      run_as:
-        description: 'Run Account AS'
-        type: boolean
-        default: false
-      run_mos:
-        description: 'Run Account MOS'
-        type: boolean
-        default: false
-      run_bel:
-        description: 'Run Account BEL'
-        type: boolean
-        default: false
-      run_di:
-        description: 'Run Account DI'
-        type: boolean
-        default: false
-      run_dieu:
-        description: 'Run Account DIEU'
-        type: boolean
-        default: false
-      run_pat:
-        description: 'Run Account PAT'
-        type: boolean
-        default: false
-      run_sam:
-        description: 'Run Account SAM'
-        type: boolean
-        default: false
-      run_na:
-        description: 'Run Account NA'
-        type: boolean
-        default: false
-      run_da:
-        description: 'Run Account DA'
-        type: boolean
-        default: false
-      run_mu:
-        description: 'Run Account MU'
-        type: boolean
-        default: false
-      run_jon:
-        description: 'Run Account JON'
-        type: boolean
-        default: false
-      run_pie:
-        description: 'Run Account PIE'
-        type: boolean
-        default: false
-      run_th:
-        description: 'Run Account TH'
-        type: boolean
-        default: false
-      run_est:
-        description: 'Run Account EST'
-        type: boolean
-        default: false
-      run_pac:
-        description: 'Run Account PAC'
-        type: boolean
-        default: false
-      run_pont:
-        description: 'Run Account PONT'
-        type: boolean
-        default: false
-      run_sab:
-        description: 'Run Account SAB'
-        type: boolean
-        default: false
-      run_sore:
-        description: 'Run Account SORE'
-        type: boolean
-        default: false
-
-jobs:
+      run_as: { description: 'Run Account AS', type: boolean, default: false }
+      run_mos: { description: 'Run Account MOS', type: boolean, default: false }
+      run_bel: { description: 'Run Account BEL', type: boolean, default: false }
+      run_di: { description: 'Run Account DI', type: boolean, default: false }
+      run_dieu: { description: 'Run Account DIEU', type: boolean, default: false }
+      run_pat: { description: 'Run Account PAT', type: boolean, default: false }
+      run_sam: { description: 'Run Account SAM', type: boolean, default: false }
+      run_na: { description: 'Run Account NA', type: boolean, default: false }
+      run_da: { description: 'Run Account DA', type: boolean, default: false }
+      run_mu: { description: 'Run Account MU', type: boolean, default: false }
+      run_jon: { description: 'Run Account JON', type: boolean, default: false }
+      run_pie: { description: 'Run Account PIE', type: boolean, default: false }
+      run_th: { description: 'Run Account TH', type: boolean, default: false }
+      run_est: { description: 'Run Account EST', type: boolean, default: false }
+      run_pac: { description: 'Run Account PAC', type: boolean, default: false }
+      run_pont: { description: 'Run Account PONT', type: boolean, default: false }
+      run_sab: { description: 'Run Account SAB', type: boolean, default: false }
+      run_sore: { description: 'Run Account SORE', type: boolean, default: false }
 
 jobs:
   run-bot:
@@ -87,21 +31,18 @@ jobs:
       fail-fast: false 
       matrix:
         include:
-          # --- Group 1: DoQuizTest.java ---
           - { account: AS, class: DoQuizTest, id: run_as }
           - { account: MOS, class: DoQuizTest, id: run_mos }
           - { account: BEL, class: DoQuizTest, id: run_bel }
           - { account: DI, class: DoQuizTest, id: run_di }
           - { account: DIEU, class: DoQuizTest, id: run_dieu }
           - { account: PAT, class: DoQuizTest, id: run_pat }
-          # --- Group 2: DoQuiz2Test.java ---
           - { account: SAM, class: DoQuiz2Test, id: run_sam }
           - { account: NA, class: DoQuiz2Test, id: run_na }
           - { account: DA, class: DoQuiz2Test, id: run_da }
           - { account: MU, class: DoQuiz2Test, id: run_mu }
           - { account: JON, class: DoQuiz2Test, id: run_jon }
           - { account: PIE, class: DoQuiz2Test, id: run_pie }
-          # --- Group 3: DoQuiz3Test.java ---
           - { account: TH, class: DoQuiz3Test, id: run_th }
           - { account: EST, class: DoQuiz3Test, id: run_est }
           - { account: PAC, class: DoQuiz3Test, id: run_pac }
@@ -143,10 +84,25 @@ jobs:
       - name: Set Account Secrets
         if: steps.check_selection.outputs.should_run == 'true'
         run: |
-          # (Your existing case statement for secrets stays here exactly as it was)
           case "${{ matrix.account }}" in
             AS) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_AS }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_AS }}" >> $GITHUB_ENV ;;
-            # ... add all other accounts here ...
+            MOS) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MOS }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_MOS }}" >> $GITHUB_ENV ;;
+            BEL) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_BEL }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_BEL }}" >> $GITHUB_ENV ;;
+            DI) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DI }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DI }}" >> $GITHUB_ENV ;;
+            DIEU) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DIEU }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DIEU }}" >> $GITHUB_ENV ;;
+            PAT) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAT }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PAT }}" >> $GITHUB_ENV ;;
+            SAM) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAM }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SAM }}" >> $GITHUB_ENV ;;
+            NA) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_NA }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_NA }}" >> $GITHUB_ENV ;;
+            DA) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_DA }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_DA }}" >> $GITHUB_ENV ;;
+            MU) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_MU }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_MU }}" >> $GITHUB_ENV ;;
+            JON) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_JON }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_JON }}" >> $GITHUB_ENV ;;
+            PIE) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PIE }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PIE }}" >> $GITHUB_ENV ;;
+            TH) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_TH }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_TH }}" >> $GITHUB_ENV ;;
+            EST) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_EST }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_EST }}" >> $GITHUB_ENV ;;
+            PAC) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PAC }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PAC }}" >> $GITHUB_ENV ;;
+            PONT) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_PONT }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_PONT }}" >> $GITHUB_ENV ;;
+            SAB) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SAB }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SAB }}" >> $GITHUB_ENV ;;
+            SORE) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SORE }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SORE }}" >> $GITHUB_ENV ;;
           esac
 
       - name: Run Quiz Bot
@@ -154,8 +110,6 @@ jobs:
         env:
           LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
           LOGIN_PIN: ${{ env.LOGIN_PIN }}
-          API_KEY: ${{ secrets.API_KEY }}
-        # MODIFIED: Uses matrix.class to pick DoQuizTest, DoQuiz2Test, or DoQuiz3Test
         run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="${{ matrix.class }}" -Dexec.args="${{ matrix.account }}"
 
       - name: Save and Sync Memory
@@ -164,7 +118,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add statistics.json
-          # MODIFIED: Pull with rebase to merge all account findings correctly
           if git commit -m "Update database [${{ matrix.account }}]"; then
             for i in {1..10}; do
               git pull --rebase origin main
