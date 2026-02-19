@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 // ⚠️ CHANGE THIS NAME for each file: DoQuizTest, DoQuiz2Test, or DoQuiz3Test
-public class DoQuiz2Test { 
+public class DoQuiz3Test { 
 
     private static String lastProcessedQuestion = "";
     private static Map<String, String> masterDatabase = new HashMap<>();
