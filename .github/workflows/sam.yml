@@ -1,4 +1,4 @@
-name: Run Quiz Bot
+name: Run Test Bot
 
 on:
   workflow_dispatch:
