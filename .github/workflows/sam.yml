@@ -3,7 +3,80 @@ name: Run Test Bot
 on:
   workflow_dispatch:
     inputs:
-      # ... (All 18 inputs from your original file stay here)
+      run_as:
+        description: 'Run Account AS'
+        type: boolean
+        default: false
+      run_mos:
+        description: 'Run Account MOS'
+        type: boolean
+        default: false
+      run_bel:
+        description: 'Run Account BEL'
+        type: boolean
+        default: false
+      run_di:
+        description: 'Run Account DI'
+        type: boolean
+        default: false
+      run_dieu:
+        description: 'Run Account DIEU'
+        type: boolean
+        default: false
+      run_pat:
+        description: 'Run Account PAT'
+        type: boolean
+        default: false
+      run_sam:
+        description: 'Run Account SAM'
+        type: boolean
+        default: false
+      run_na:
+        description: 'Run Account NA'
+        type: boolean
+        default: false
+      run_da:
+        description: 'Run Account DA'
+        type: boolean
+        default: false
+      run_mu:
+        description: 'Run Account MU'
+        type: boolean
+        default: false
+      run_jon:
+        description: 'Run Account JON'
+        type: boolean
+        default: false
+      run_pie:
+        description: 'Run Account PIE'
+        type: boolean
+        default: false
+      run_th:
+        description: 'Run Account TH'
+        type: boolean
+        default: false
+      run_est:
+        description: 'Run Account EST'
+        type: boolean
+        default: false
+      run_pac:
+        description: 'Run Account PAC'
+        type: boolean
+        default: false
+      run_pont:
+        description: 'Run Account PONT'
+        type: boolean
+        default: false
+      run_sab:
+        description: 'Run Account SAB'
+        type: boolean
+        default: false
+      run_sore:
+        description: 'Run Account SORE'
+        type: boolean
+        default: false
+
+jobs:
 
 jobs:
   run-bot:
