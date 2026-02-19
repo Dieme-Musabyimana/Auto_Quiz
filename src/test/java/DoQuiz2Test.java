@@ -11,7 +11,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 // ⚠️ CHANGE THIS NAME for each file: DoQuizTest, DoQuiz2Test, or DoQuiz3Test
-public class DoQuiz3Test { 
+public class DoQuiz2Test { 
 
     private static String lastProcessedQuestion = "";
     private static Map<String, String> masterDatabase = new HashMap<>();
@@ -50,8 +50,8 @@ public class DoQuiz3Test {
                         new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
 
                     page.locator("button:has-text('START EARN')").click();
-                    page.locator("#subcategory-3").waitFor();
-                    page.selectOption("#subcategory-3", new SelectOption().setIndex(2));
+                    page.locator("#subcategory-2").waitFor();
+                    page.selectOption("#subcategory-2", new SelectOption().setIndex(2));
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
                     page.click("//button[contains(text(),'START')]");
