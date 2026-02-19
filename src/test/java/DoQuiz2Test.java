@@ -49,9 +49,15 @@ public class DoQuiz2Test {
                     page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index", 
                         new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
 
-                    page.locator("button:has-text('START EARN')").click();
-                    page.locator("#subcategory-2").waitFor();
-                    page.selectOption("#subcategory-2", new SelectOption().setIndex(2));
+                   page.locator("button:has-text('START EARN')").click();
+
+                 Locator sub2 = page.locator("#subcategory-2");
+                 sub2.waitFor();
+                 sub2.selectOption(new SelectOption().setIndex(2)); // Try changing index to 3 if this is still English
+
+                String subject2 = sub2.evaluate("el => el.options[el.selectedIndex].text").toString();
+                System.out.println("🎯 ACCOUNT TYPE 2 SELECTED SUBJECT: " + subject2);
+                    page.waitForTimeout(1000);
                     page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
                     page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
                     page.click("//button[contains(text(),'START')]");
