@@ -28,7 +28,7 @@ jobs:
     permissions:
       contents: write
     strategy:
-      fail-fast: false 
+      fail-fast: false
       matrix:
         include:
           - { account: AS, class: DoQuizTest, id: run_as }
@@ -105,12 +105,17 @@ jobs:
             SORE) echo "LOGIN_PHONE=${{ secrets.LOGIN_PHONE_SORE }}" >> $GITHUB_ENV; echo "LOGIN_PIN=${{ secrets.LOGIN_PIN_SORE }}" >> $GITHUB_ENV ;;
           esac
 
-      - name: Run Quiz Bot
+      - name: Run Quiz Bot (Fresh Quiz)
         if: steps.check_selection.outputs.should_run == 'true'
         env:
           LOGIN_PHONE: ${{ env.LOGIN_PHONE }}
           LOGIN_PIN: ${{ env.LOGIN_PIN }}
-        run: mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="${{ matrix.class }}" -Dexec.args="${{ matrix.account }}"
+        run: |
+          # Run login only using persistent context
+          mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="${{ matrix.class }}" -Dexec.args="${{ matrix.account }} loginOnly"
+          
+          # Run quiz session in fresh browser context (new subcategory can be selected)
+          mvn -e exec:java -Dexec.classpathScope="test" -Dexec.mainClass="${{ matrix.class }}" -Dexec.args="${{ matrix.account }} freshQuiz"
 
       - name: Save and Sync Memory
         if: steps.check_selection.outputs.should_run == 'true' && always()
