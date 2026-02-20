@@ -1,209 +1,97 @@
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
 public class DoQuiz2Test {
 
-    private static String lastProcessedQuestion = "";
-    private static Map<String, String> masterDatabase = new HashMap<>();
-    private static final String DATA_FILE = "statistics.json"; // Shared memory
-    private static int totalMarksGained = 0;
-    private static final Random random = new Random();
-    private static final int QUESTION_TIMEOUT_MS = 10000;
+    private static final String LOGIN_URL = "https://yourquizsite.com/login";
+    private static final String COOKIE_PATH = "cookies_doquiz2.json";
+    private static Map<String, String> memoryDatabase = new HashMap<>();
 
-    public static void main(String[] args) throws IOException {
-        loadData();
-        int totalQuestions = random.nextInt(100 - 85 + 1) + 85;
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Usage: java DoQuiz2Test <account> [loginOnly|freshQuiz]");
+            return;
+        }
 
-        String profileName = args.length > 0 ? args[0] : "acc_default";
-        Path userDataDir = Paths.get("profiles", profileName);
+        String account = args[0];
+        String mode = args.length > 1 ? args[1] : "freshQuiz";
 
-        if (!Files.exists(userDataDir)) Files.createDirectories(userDataDir);
-        System.out.println("👤 Profile: " + profileName);
+        String phone = System.getenv("LOGIN_PHONE");
+        String pin = System.getenv("LOGIN_PIN");
 
         try (Playwright playwright = Playwright.create()) {
-            BrowserType.LaunchPersistentContextOptions options = new BrowserType.LaunchPersistentContextOptions()
-                    .setHeadless(true)
-                    .setIgnoreDefaultArgs(Arrays.asList("--enable-automation"))
-                    .setArgs(Arrays.asList(
-                            "--disable-blink-features=AutomationControlled",
-                            "--no-sandbox",
-                            "--disable-dev-shm-usage"))
-                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0 Safari/537.36")
-                    .setViewportSize(1920, 1080);
+            BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
+                    .setHeadless(true);
 
-            BrowserContext context = playwright.chromium().launchPersistentContext(userDataDir, options);
-            Page page = context.pages().get(0);
+            Browser browser;
 
-            while (true) {
+            if (mode.equals("loginOnly")) {
+                browser = playwright.chromium().launch(launchOptions);
+                BrowserContext context = browser.newContext(
+                        new Browser.NewContextOptions()
+                                .setStorageStatePath(Paths.get(COOKIE_PATH))
+                );
+                login(context, phone, pin);
+                context.storageState(new BrowserContext.StorageStateOptions().setPath(Paths.get(COOKIE_PATH)));
+                context.close();
+                browser.close();
+                System.out.println("Login completed and saved for account: " + account);
+
+            } else if (mode.equals("freshQuiz")) {
+                browser = playwright.chromium().launch(launchOptions);
+                BrowserContext context = browser.newContext();
                 try {
-                    System.out.println("\n📊 MASTER DATABASE SIZE: " + masterDatabase.size() +
-                            " | Session Marks: " + totalMarksGained);
-
-                    page = loginIfNeeded(page, context, profileName);
-
-                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index",
-                            new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
-
-                    // Clear memory for new quiz
-                    page.context().clearCookies();
-                    page.evaluate("() => localStorage.clear()");
-                    page.reload();
-
-                    page.locator("button:has-text('START EARN')").click();
-
-                    // --- SUBCATEGORY SELECTION ---
-                    Locator sub2 = page.locator("#subcategory-2");
-                    sub2.waitFor();
-
-                    // Replace "Mathematics" with your exact subject from subcategory-2
-                    String desiredSubject = "Mathematics"; 
-                    sub2.selectOption(new SelectOption().setLabel(desiredSubject));
-
-                    page.waitForTimeout(500); // Let site JS register change
-                    page.evalOnSelector("#subcategory-2",
-                            "el => el.dispatchEvent(new Event('change', { bubbles: true }))");
-
-                    String selectedText = sub2.evaluate("el => el.options[el.selectedIndex].text").toString();
-                    System.out.println("🎯 Selected Subject: " + selectedText);
-
-                    page.selectOption("#mySelect", new SelectOption().setValue(String.valueOf(totalQuestions)));
-                    page.click("//a[contains(@onclick,\"selectLevel('advanced')\")]");
-                    page.click("//button[contains(text(),'START')]");
-
-                    FrameLocator quizFrame = page.frameLocator("#iframeId");
-                    int currentQuestion = 1;
-
-                    while (currentQuestion <= totalQuestions) {
-                        processQuestion(quizFrame, page, currentQuestion);
-                        currentQuestion++;
-                    }
-
-                    saveData();
-                    System.out.println("🏁 Batch Completed. Syncing with Master Brain...");
-                    humanWait(page, 2000, 5000);
-
-                } catch (Exception e) {
-                    System.err.println("🔄 Restarting: " + e.getMessage());
-                    page.navigate("https://www.iwacusoft.com/ubumenyibwanjye/index");
-                }
+                    context.addCookies(BrowserContext.Cookies.fromFile(Paths.get(COOKIE_PATH)));
+                } catch (Exception ignored) {}
+                Page page = context.newPage();
+                login(page, phone, pin);
+                startQuiz(page);
+                context.storageState(new BrowserContext.StorageStateOptions().setPath(Paths.get(COOKIE_PATH)));
+                context.close();
+                browser.close();
+            } else {
+                System.out.println("Unknown mode: " + mode);
             }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private static void processQuestion(FrameLocator quizFrame, Page page, int i) throws Exception {
-        int cycles = 0;
-        String qText = "";
+    private static void login(BrowserContext context, String phone, String pin) {
+        Page page = context.newPage();
+        login(page, phone, pin);
+        page.close();
+    }
 
-        while (cycles < 50) {
+    private static void login(Page page, String phone, String pin) {
+        page.navigate(LOGIN_URL);
+        page.locator("#phone").fill(phone);
+        page.locator("#pin").fill(pin);
+        page.locator("#loginButton").click();
+        page.waitForLoadState();
+        System.out.println("Logged in successfully");
+    }
+
+    private static void startQuiz(Page page) {
+        page.navigate("https://yourquizsite.com/quiz");
+        page.locator("#subcategorySelect").click();
+        page.locator(".subcategoryOption").first().click();
+
+        for (int i = 1; i <= 50; i++) {
             try {
-                qText = quizFrame.locator("#qTitle").innerText().trim();
-                if (!qText.isEmpty() && !qText.contains("Loading") && !qText.equals(lastProcessedQuestion)) break;
-            } catch (Exception ignored) {}
-            page.waitForTimeout(200);
-            cycles++;
+                Locator option = page.locator(".opt").first();
+                String answer = memoryDatabase.getOrDefault("Q" + i, "skip");
+                if (!answer.equals("skip")) {
+                    option.filter(new Locator.FilterOptions().setHasText(answer)).click();
+                }
+                page.locator("#submitButton").click();
+                memoryDatabase.put("Q" + i, option.textContent());
+            } catch (Exception e) {
+                System.out.println("Q" + i + " skipped or error occurred");
+            }
         }
-
-        if (qText.isEmpty() || qText.equals(lastProcessedQuestion)) throw new Exception("Question Timeout");
-        lastProcessedQuestion = qText;
-
-        List<String> options = quizFrame.locator(".opt .txt").allInnerTexts();
-        options.removeIf(String::isEmpty);
-
-        String choiceToClick;
-
-        if (masterDatabase.containsKey(qText)) {
-            choiceToClick = masterDatabase.get(qText);
-            System.out.println("📝 Q" + i + " [Memory]: " + choiceToClick);
-        } else {
-            choiceToClick = options.get(random.nextInt(options.size()));
-            System.out.println("📝 Q" + i + " [New]: Teaching Master Brain...");
-        }
-
-        quizFrame.locator(".opt").filter(new Locator.FilterOptions().setHasText(choiceToClick)).first().click();
-        quizFrame.locator("button:has-text('Submit'), #submitBtn").first().click();
-
-        try {
-            page.waitForTimeout(600);
-            String resultText = quizFrame.locator("#lastBody").innerText();
-
-            if (resultText.contains("Correct:")) {
-                String correctLetter = resultText.split("Correct:")[1].trim().substring(0, 1);
-                int correctIndex = correctLetter.charAt(0) - 'A';
-
-                if (correctIndex >= 0 && correctIndex < options.size()) {
-                    String actualAns = options.get(correctIndex);
-
-                    if (!masterDatabase.containsKey(qText)) {
-                        masterDatabase.put(qText, actualAns);
-                        saveData();
-                        System.out.println("💡 Learned: " + actualAns);
-                    }
-
-                    if (choiceToClick.equalsIgnoreCase(actualAns)) totalMarksGained++;
-                }
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private static synchronized void saveData() {
-        Map<String, String> diskDb = new HashMap<>();
-        int diskMarks = 0;
-        try {
-            File file = new File(DATA_FILE);
-            if (file.exists()) {
-                Reader r = new FileReader(file);
-                Map<String, Object> data = new Gson().fromJson(r, new TypeToken<Map<String, Object>>(){}.getType());
-                if (data != null) {
-                    if (data.get("database") != null) diskDb = (Map<String, String>) data.get("database");
-                    if (data.get("totalMarks") != null) diskMarks = ((Double) data.get("totalMarks")).intValue();
-                }
-            }
-            diskDb.putAll(masterDatabase);
-            try (Writer w = new FileWriter(DATA_FILE)) {
-                Map<String, Object> out = new HashMap<>();
-                out.put("database", diskDb);
-                out.put("totalMarks", Math.max(diskMarks, totalMarksGained));
-                new Gson().toJson(out, w);
-                masterDatabase = diskDb;
-            }
-        } catch (Exception e) { System.err.println("Save Error: " + e.getMessage()); }
-    }
-
-    private static void loadData() {
-        try {
-            File file = new File(DATA_FILE);
-            if (file.exists()) {
-                Reader r = new FileReader(file);
-                Map<String, Object> data = new Gson().fromJson(r, new TypeToken<Map<String, Object>>(){}.getType());
-                if (data != null) {
-                    if (data.get("database") != null) masterDatabase = (Map<String, String>) data.get("database");
-                    if (data.get("totalMarks") != null) totalMarksGained = ((Double) data.get("totalMarks")).intValue();
-                }
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private static Page loginIfNeeded(Page page, BrowserContext context, String profileName) {
-        try {
-            if (page.locator("input[placeholder*='Phone']").isVisible()) {
-                page.locator("input[placeholder*='Phone']").fill(System.getenv("LOGIN_PHONE"));
-                page.locator("input[placeholder*='PIN']").fill(System.getenv("LOGIN_PIN"));
-                page.click("//button[contains(., 'Log in')]");
-                page.waitForURL("**/index");
-            }
-        } catch (Exception ignored) {}
-        return page;
-    }
-
-    private static void humanWait(Page page, int min, int max) {
-        page.waitForTimeout(random.nextInt(max - min + 1) + min);
     }
 }
