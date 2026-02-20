@@ -1,97 +1,110 @@
+package test;
+
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.*;
-import java.nio.file.Paths;
+import page.LoginPage;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 
 public class DoQuiz2Test {
 
-    private static final String LOGIN_URL = "https://yourquizsite.com/login";
-    private static final String COOKIE_PATH = "cookies_doquiz2.json";
-    private static Map<String, String> memoryDatabase = new HashMap<>();
+    private static final String MEMORY_FILE = "memory.json";
+    private static Map<String, String> memory = new HashMap<>();
+
+    static {
+        // Load memory.json if exists
+        try {
+            if (Files.exists(Paths.get(MEMORY_FILE))) {
+                memory = new Gson().fromJson(
+                        new String(Files.readAllBytes(Paths.get(MEMORY_FILE))),
+                        new TypeToken<Map<String, String>>() {}.getType()
+                );
+            }
+        } catch (Exception e) {
+            System.out.println("⚠️ Failed to load memory.json: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Usage: java DoQuiz2Test <account> [loginOnly|freshQuiz]");
-            return;
-        }
-
-        String account = args[0];
-        String mode = args.length > 1 ? args[1] : "freshQuiz";
-
-        String phone = System.getenv("LOGIN_PHONE");
-        String pin = System.getenv("LOGIN_PIN");
+        String account = args.length > 0 ? args[0] : "default";
 
         try (Playwright playwright = Playwright.create()) {
-            BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions()
-                    .setHeadless(true);
+            Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                    .setHeadless(false));
 
-            Browser browser;
+            LoginPage loginPage = new LoginPage();
+            Page page = loginPage.getAuthenticatedPage(browser, new Browser.NewContextOptions());
 
-            if (mode.equals("loginOnly")) {
-                browser = playwright.chromium().launch(launchOptions);
-                BrowserContext context = browser.newContext(
-                        new Browser.NewContextOptions()
-                                .setStorageStatePath(Paths.get(COOKIE_PATH))
-                );
-                login(context, phone, pin);
-                context.storageState(new BrowserContext.StorageStateOptions().setPath(Paths.get(COOKIE_PATH)));
-                context.close();
-                browser.close();
-                System.out.println("Login completed and saved for account: " + account);
+            // Wait for quiz page to load
+            page.waitForSelector("#qTitle");
 
-            } else if (mode.equals("freshQuiz")) {
-                browser = playwright.chromium().launch(launchOptions);
-                BrowserContext context = browser.newContext();
-                try {
-                    context.addCookies(BrowserContext.Cookies.fromFile(Paths.get(COOKIE_PATH)));
-                } catch (Exception ignored) {}
-                Page page = context.newPage();
-                login(page, phone, pin);
-                startQuiz(page);
-                context.storageState(new BrowserContext.StorageStateOptions().setPath(Paths.get(COOKIE_PATH)));
-                context.close();
-                browser.close();
-            } else {
-                System.out.println("Unknown mode: " + mode);
-            }
+            boolean hasNext = true;
+            while (hasNext) {
+                String question = page.locator("#qTitle").innerText().trim();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+                // Check memory
+                if (memory.containsKey(question)) {
+                    String answerText = memory.get(question);
+                    Locator options = page.locator("#options .opt");
+                    int count = options.count();
+                    for (int i = 0; i < count; i++) {
+                        if (options.nth(i).innerText().trim().equals(answerText)) {
+                            options.nth(i).click();
+                            break;
+                        }
+                    }
+                } else {
+                    // New question: pick random option
+                    Locator options = page.locator("#options .opt");
+                    int count = options.count();
+                    int choiceIndex = new Random().nextInt(count);
+                    options.nth(choiceIndex).click();
 
-    private static void login(BrowserContext context, String phone, String pin) {
-        Page page = context.newPage();
-        login(page, phone, pin);
-        page.close();
-    }
+                    page.locator("button[type='submit']").click();
 
-    private static void login(Page page, String phone, String pin) {
-        page.navigate(LOGIN_URL);
-        page.locator("#phone").fill(phone);
-        page.locator("#pin").fill(pin);
-        page.locator("#loginButton").click();
-        page.waitForLoadState();
-        System.out.println("Logged in successfully");
-    }
+                    // Wait for correct answer to appear
+                    page.waitForSelector("xpath=//span[contains(., 'Correct:')]/following-sibling::b");
 
-    private static void startQuiz(Page page) {
-        page.navigate("https://yourquizsite.com/quiz");
-        page.locator("#subcategorySelect").click();
-        page.locator(".subcategoryOption").first().click();
+                    String correctLetter = page.locator(
+                            "xpath=//span[contains(., 'Correct:')]/following-sibling::b"
+                    ).innerText().trim();
 
-        for (int i = 1; i <= 50; i++) {
-            try {
-                Locator option = page.locator(".opt").first();
-                String answer = memoryDatabase.getOrDefault("Q" + i, "skip");
-                if (!answer.equals("skip")) {
-                    option.filter(new Locator.FilterOptions().setHasText(answer)).click();
+                    // Map letter to option text
+                    Map<String, String> letterToText = new HashMap<>();
+                    for (int i = 0; i < count; i++) {
+                        String text = options.nth(i).innerText().trim();
+                        String letter = String.valueOf((char) ('A' + i));
+                        letterToText.put(letter, text);
+                    }
+
+                    String correctText = letterToText.getOrDefault(correctLetter, options.nth(0).innerText().trim());
+                    memory.put(question, correctText);
+
+                    // Save memory immediately
+                    try (Writer writer = new FileWriter(MEMORY_FILE)) {
+                        new Gson().toJson(memory, writer);
+                    } catch (Exception e) {
+                        System.out.println("⚠️ Failed to save memory.json: " + e.getMessage());
+                    }
                 }
-                page.locator("#submitButton").click();
-                memoryDatabase.put("Q" + i, option.textContent());
-            } catch (Exception e) {
-                System.out.println("Q" + i + " skipped or error occurred");
+
+                // Click next
+                Locator nextButton = page.locator("//button[contains(., 'Next')]");
+                if (nextButton.isVisible()) {
+                    nextButton.click();
+                    page.waitForTimeout(1000); // wait a bit
+                } else {
+                    hasNext = false;
+                }
             }
+
+            System.out.println("✅ Quiz finished for account: " + account);
+        } catch (Exception e) {
+            System.err.println("❌ Error during quiz: " + e.getMessage());
         }
     }
 }
