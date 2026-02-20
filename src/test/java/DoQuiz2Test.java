@@ -279,5 +279,4 @@ public class DoQuiz2Test {
                 }
             }
         } catch (Exception ignored) {}
-    }
-}
+    
